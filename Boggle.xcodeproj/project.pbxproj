@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -18,6 +18,11 @@
 		F44913D52AF59541001BBA2D /* BoggleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44913D42AF59541001BBA2D /* BoggleTests.swift */; };
 		F44913DF2AF59541001BBA2D /* BoggleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44913DE2AF59541001BBA2D /* BoggleUITests.swift */; };
 		F44913E12AF59541001BBA2D /* BoggleUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44913E02AF59541001BBA2D /* BoggleUITestsLaunchTests.swift */; };
+		F44DF3D12CB33BE700987082 /* BoggleGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D02CB33BE300987082 /* BoggleGridView.swift */; };
+		F44DF3D32CB33C1800987082 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D22CB33C1400987082 /* ContentView.swift */; };
+		F44DF3D52CB33C2E00987082 /* WordInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D42CB33C2A00987082 /* WordInputView.swift */; };
+		F44DF3D72CB33C4300987082 /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D62CB33C4000987082 /* GameViewModel.swift */; };
+		F44DF3D92CB33C9600987082 /* Position.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D82CB33C9400987082 /* Position.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +57,11 @@
 		F44913DA2AF59541001BBA2D /* BoggleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoggleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F44913DE2AF59541001BBA2D /* BoggleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoggleUITests.swift; sourceTree = "<group>"; };
 		F44913E02AF59541001BBA2D /* BoggleUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoggleUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		F44DF3D02CB33BE300987082 /* BoggleGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoggleGridView.swift; sourceTree = "<group>"; };
+		F44DF3D22CB33C1400987082 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		F44DF3D42CB33C2A00987082 /* WordInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordInputView.swift; sourceTree = "<group>"; };
+		F44DF3D62CB33C4000987082 /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
+		F44DF3D82CB33C9400987082 /* Position.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Position.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -102,6 +112,11 @@
 		F44913B92AF59536001BBA2D /* Boggle */ = {
 			isa = PBXGroup;
 			children = (
+				F44DF3D82CB33C9400987082 /* Position.swift */,
+				F44DF3D62CB33C4000987082 /* GameViewModel.swift */,
+				F44DF3D42CB33C2A00987082 /* WordInputView.swift */,
+				F44DF3D22CB33C1400987082 /* ContentView.swift */,
+				F44DF3D02CB33BE300987082 /* BoggleGridView.swift */,
 				F44913BA2AF59536001BBA2D /* AppDelegate.swift */,
 				F44913BC2AF59537001BBA2D /* GameScene.sks */,
 				F44913BE2AF59537001BBA2D /* Actions.sks */,
@@ -195,7 +210,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1510;
-				LastUpgradeCheck = 1510;
+				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					F44913B62AF59536001BBA2D = {
 						CreatedOnToolsVersion = 15.1;
@@ -211,7 +226,7 @@
 				};
 			};
 			buildConfigurationList = F44913B22AF59536001BBA2D /* Build configuration list for PBXProject "Boggle" */;
-			compatibilityVersion = "Xcode 14.0";
+			compatibilityVersion = "Xcode 15.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -264,9 +279,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F44DF3D12CB33BE700987082 /* BoggleGridView.swift in Sources */,
+				F44DF3D32CB33C1800987082 /* ContentView.swift in Sources */,
 				F44913C12AF59537001BBA2D /* GameScene.swift in Sources */,
 				F44913C32AF59537001BBA2D /* GameViewController.swift in Sources */,
 				F44913BB2AF59536001BBA2D /* AppDelegate.swift in Sources */,
+				F44DF3D52CB33C2E00987082 /* WordInputView.swift in Sources */,
+				F44DF3D92CB33C9600987082 /* Position.swift in Sources */,
+				F44DF3D72CB33C4300987082 /* GameViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -449,12 +469,16 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Boggle;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.word-games";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -476,12 +500,16 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Boggle;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.word-games";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -498,7 +526,6 @@
 		F44913E82AF59541001BBA2D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -517,7 +544,6 @@
 		F44913E92AF59541001BBA2D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -536,7 +562,6 @@
 		F44913EB2AF59541001BBA2D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -553,7 +578,6 @@
 		F44913EC2AF59541001BBA2D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
