@@ -7,11 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F44913BB2AF59536001BBA2D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44913BA2AF59536001BBA2D /* AppDelegate.swift */; };
-		F44913BD2AF59537001BBA2D /* GameScene.sks in Resources */ = {isa = PBXBuildFile; fileRef = F44913BC2AF59537001BBA2D /* GameScene.sks */; };
-		F44913BF2AF59537001BBA2D /* Actions.sks in Resources */ = {isa = PBXBuildFile; fileRef = F44913BE2AF59537001BBA2D /* Actions.sks */; };
-		F44913C12AF59537001BBA2D /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44913C02AF59537001BBA2D /* GameScene.swift */; };
-		F44913C32AF59537001BBA2D /* GameViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44913C22AF59537001BBA2D /* GameViewController.swift */; };
+		F42588722E11BA9100333C40 /* Rules.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42588712E11BA9100333C40 /* Rules.swift */; };
+		F42588742E11BB0100333C40 /* RuleSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42588732E11BB0100333C40 /* RuleSettingsView.swift */; };
+		F42588782E11D29F00333C40 /* BoggleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42588772E11D29F00333C40 /* BoggleApp.swift */; };
 		F44913C62AF59537001BBA2D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F44913C42AF59537001BBA2D /* Main.storyboard */; };
 		F44913C82AF59540001BBA2D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F44913C72AF59540001BBA2D /* Assets.xcassets */; };
 		F44913CB2AF59540001BBA2D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F44913C92AF59540001BBA2D /* LaunchScreen.storyboard */; };
@@ -43,12 +41,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F42588712E11BA9100333C40 /* Rules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rules.swift; sourceTree = "<group>"; };
+		F42588732E11BB0100333C40 /* RuleSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleSettingsView.swift; sourceTree = "<group>"; };
+		F42588772E11D29F00333C40 /* BoggleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoggleApp.swift; sourceTree = "<group>"; };
 		F44913B72AF59536001BBA2D /* Boggle.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Boggle.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		F44913BA2AF59536001BBA2D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		F44913BC2AF59537001BBA2D /* GameScene.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = GameScene.sks; sourceTree = "<group>"; };
-		F44913BE2AF59537001BBA2D /* Actions.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = Actions.sks; sourceTree = "<group>"; };
-		F44913C02AF59537001BBA2D /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
-		F44913C22AF59537001BBA2D /* GameViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewController.swift; sourceTree = "<group>"; };
 		F44913C52AF59537001BBA2D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		F44913C72AF59540001BBA2D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F44913CA2AF59540001BBA2D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -117,14 +113,12 @@
 				F44DF3D42CB33C2A00987082 /* WordInputView.swift */,
 				F44DF3D22CB33C1400987082 /* ContentView.swift */,
 				F44DF3D02CB33BE300987082 /* BoggleGridView.swift */,
-				F44913BA2AF59536001BBA2D /* AppDelegate.swift */,
-				F44913BC2AF59537001BBA2D /* GameScene.sks */,
-				F44913BE2AF59537001BBA2D /* Actions.sks */,
-				F44913C02AF59537001BBA2D /* GameScene.swift */,
-				F44913C22AF59537001BBA2D /* GameViewController.swift */,
 				F44913C42AF59537001BBA2D /* Main.storyboard */,
 				F44913C72AF59540001BBA2D /* Assets.xcassets */,
 				F44913C92AF59540001BBA2D /* LaunchScreen.storyboard */,
+				F42588712E11BA9100333C40 /* Rules.swift */,
+				F42588732E11BB0100333C40 /* RuleSettingsView.swift */,
+				F42588772E11D29F00333C40 /* BoggleApp.swift */,
 			);
 			path = Boggle;
 			sourceTree = "<group>";
@@ -210,7 +204,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1510;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					F44913B62AF59536001BBA2D = {
 						CreatedOnToolsVersion = 15.1;
@@ -251,10 +245,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F44913C62AF59537001BBA2D /* Main.storyboard in Resources */,
-				F44913BD2AF59537001BBA2D /* GameScene.sks in Resources */,
 				F44913C82AF59540001BBA2D /* Assets.xcassets in Resources */,
 				F44913CB2AF59540001BBA2D /* LaunchScreen.storyboard in Resources */,
-				F44913BF2AF59537001BBA2D /* Actions.sks in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -280,10 +272,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				F44DF3D12CB33BE700987082 /* BoggleGridView.swift in Sources */,
+				F42588742E11BB0100333C40 /* RuleSettingsView.swift in Sources */,
 				F44DF3D32CB33C1800987082 /* ContentView.swift in Sources */,
-				F44913C12AF59537001BBA2D /* GameScene.swift in Sources */,
-				F44913C32AF59537001BBA2D /* GameViewController.swift in Sources */,
-				F44913BB2AF59536001BBA2D /* AppDelegate.swift in Sources */,
+				F42588782E11D29F00333C40 /* BoggleApp.swift in Sources */,
+				F42588722E11BA9100333C40 /* Rules.swift in Sources */,
 				F44DF3D52CB33C2E00987082 /* WordInputView.swift in Sources */,
 				F44DF3D92CB33C9600987082 /* Position.swift in Sources */,
 				F44DF3D72CB33C4300987082 /* GameViewModel.swift in Sources */,
@@ -400,6 +392,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -456,6 +449,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -468,6 +462,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YS494KWSAN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Boggle;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.word-games";
@@ -499,6 +494,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YS494KWSAN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Boggle;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.word-games";

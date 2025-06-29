@@ -1,160 +1,142 @@
-import Foundation
-import Combine
+// =============================================================
+// GameViewModel.swift
+// =============================================================
 
-class GameViewModel: ObservableObject {
+import Combine
+import SwiftUI
+
+// UserMessage: A simple structure to hold messages for the user (e.g., errors or alerts).
+// Conforms to Identifiable so it can be used for SwiftUI alerts, and Equatable for comparisons.
+struct UserMessage: Identifiable, Equatable {
+    let id = UUID() // Unique identifier for SwiftUI
+    let message: String // The actual message to show
+}
+
+// =============================================================
+// GameViewModel: Core logic and state-holder for the Boggle game.
+// Handles game state, rules, timer, score, and dictionary lookups.
+// MainActor: Ensures updates happen on the main/UI thread.
+// =============================================================
+@MainActor final class GameViewModel: ObservableObject {
+    // MARK: - UI-bound state (Published so SwiftUI updates automatically)
+    // The current letter grid for the game.
     @Published var grid: [[Character]] = []
-    @Published var currentWord: String = ""
+    // The word the user is currently building/selecting.
+    @Published var currentWord = ""
+    // A running list of words the user has found so far.
     @Published var foundWords: [String] = []
-    @Published var score: Int = 0
-    @Published var timeRemaining: Int = 180 // 3 minutes
-    @Published var highScore: Int = 0
-    
+    // The user's current score for this round.
+    @Published var score = 0
+    // Time left in the round (in seconds).
+    @Published var timeRemaining = 180
+    // Highest score ever achieved (across games).
+    @Published var highScore = 0
+    // Holds a message to present to the user, e.g., invalid word, end of game, etc.
+    @Published var userMessage: UserMessage? = nil
+
+    // MARK: - Private helpers (not exposed to the view)
+    // Used to manage the repeating timer for countdown.
     private var timer: AnyCancellable?
-    private var dictionary: Set<String> = []
-    
+    // The set of valid words loaded from a dictionary file.
+    private var dictionary = Set<String>()
+    // Handles rule enforcement for word validity.
+    private var ruleEngine: RuleEngine!
+
+    // MARK: - Persisted rule bit‑mask (stores the user's rule preferences)
+    // @AppStorage persists the value using UserDefaults, so rule options are saved between app launches.
+    // 'private' so only this class changes the value directly.
+    @AppStorage("ruleOptions") private var optionsRaw = RuleOptions.all.rawValue
+
+    /// Exposes the current rule options for use in the settings view (read-only).
+    var currentOptions: RuleOptions { RuleOptions(rawValue: optionsRaw) }
+
+    // MARK: - Init (setup)
     init() {
-        loadDictionary()
-        highScore = UserDefaults.standard.integer(forKey: "HighScore")
+        rebuildRules()      // Set up rule engine based on saved options
+        loadDictionary()    // Load valid word list from file
+        highScore = UserDefaults.standard.integer(forKey: "HighScore") // Load best score
     }
-    
-    func startGame() {
-        generateGrid()
-        resetGame()
-        startTimer()
-    }
-    
-    func resetGame() {
-        foundWords.removeAll()
-        score = 0
-        currentWord = ""
-        timeRemaining = 180
-    }
-    
-    private func loadDictionary() {
-        if let path = Bundle.main.path(forResource: "dictionary", ofType: "txt") {
-            if let content = try? String(contentsOfFile: path) {
-                let words = content.components(separatedBy: .newlines)
-                dictionary = Set(words.map { $0.lowercased() })
-            }
+
+    // MARK: - Game control (main game logic)
+    // Starts a new game: creates a new grid, resets word/score/timer, and starts the countdown.
+    func startGame() { generateGrid(); resetGame(); startTimer() }
+
+    // Resets the round state: clears found words, resets score, resets time, empties current word.
+    func resetGame() { foundWords.removeAll(); score = 0; currentWord = ""; timeRemaining = 180 }
+
+    // Called when the user tries to submit a word.
+    // Validates the word, checks rules and dictionary, updates score and state as needed.
+    func submitWord(selectedLetters: [Position]) {
+        let word = currentWord.lowercased() // Always compare in lowercase
+        guard !word.isEmpty else { return } // Ignore empty submissions
+        let ctx = GameContext(grid: grid, previousWords: Set(foundWords))
+        switch ruleEngine.evaluate(word: word, path: selectedLetters, in: ctx) {
+        case .success(let bonus):
+            // If custom rules pass, check if it's a real word in our dictionary
+            guard dictionary.contains(word) else { userMessage = UserMessage(message: "Not in dictionary"); return }
+            foundWords.append(word) // Save the new word
+            score += bonus + calculateScore(for: word) // Add points for this word
+            // Update high score if needed
+            if score > highScore { highScore = score; UserDefaults.standard.set(highScore, forKey: "HighScore") }
+        case .failure(let why):
+            // If rules failed, show the reason to the user
+            userMessage = UserMessage(message: why)
         }
+        currentWord = "" // Clear the current word for next turn
     }
-    
+
+    // MARK: - Rule toggling (settings/rules UI interaction)
+    // Toggles a specific rule on/off using bitwise XOR.
+    func toggle(_ flag: RuleOptions) { optionsRaw ^= flag.rawValue; rebuildRules() }
+
+    // Rebuild the rule engine using the latest toggles/options.
+    private func rebuildRules() {
+        let opts = RuleOptions(rawValue: optionsRaw)
+        var r: [GameRule] = []
+        // Optionally require minimum length
+        if opts.contains(.minLength)   { r.append(MinLengthRule(minLen: 3)) }
+        // Optionally require unique words
+        if opts.contains(.uniqueWords) { r.append(UniqueWordRule()) }
+        ruleEngine = RuleEngine(r) // Create new engine with these rules
+    }
+
+    // MARK: - Utility
+    // Loads a list of valid words from a dictionary file in the app bundle.
+    private func loadDictionary() {
+        guard let path = Bundle.main.path(forResource: "dictionary", ofType: "txt"),
+              let content = try? String(contentsOfFile: path) else { return }
+        // Store all words (lowercased) in a set for fast lookup
+        dictionary = Set(content.split(separator: "\n").map { $0.lowercased() })
+    }
+
+    // Creates a new 4x4 grid of random uppercase letters for the game board.
     private func generateGrid() {
         let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        grid = (0..<4).map { _ in
-            (0..<4).map { _ in
-                letters.randomElement()!
-            }
-        }
+        grid = (0..<4).map { _ in (0..<4).map { _ in letters.randomElement()! } }
     }
-    
+
+    // Calculates how many points a word earns (longer words score more).
+    private func calculateScore(for w: String) -> Int {
+        switch w.count { case 3...4: 1; case 5: 2; case 6: 3; case 7: 5; default: 11 }
+    }
+
+    // MARK: - Timer logic
+    // Starts (or restarts) the countdown timer for the game.
     private func startTimer() {
-        timer?.cancel()
+        timer?.cancel() // Stop any existing timer
+        // Create a new timer that fires every second and calls 'tick()'
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
-            .sink { [weak self] _ in
-                self?.tick()
-            }
+            .sink { [weak self] _ in self?.tick() }
     }
-    
+
+    // Called every second by the timer.
+    // Decreases remaining time, and stops the timer if time runs out.
     private func tick() {
         if timeRemaining > 0 {
             timeRemaining -= 1
         } else {
-            timer?.cancel()
-            // Handle end of game
+            timer?.cancel() // Time's up
         }
-    }
-    
-    func submitWord(selectedLetters: [Position]) {
-        let lowercasedWord = currentWord.lowercased()
-        guard lowercasedWord.count >= 3 else {
-            // Word too short
-            currentWord = ""
-            return
-        }
-        guard dictionary.contains(lowercasedWord) else {
-            // Not a valid word
-            currentWord = ""
-            return
-        }
-        guard !foundWords.contains(lowercasedWord) else {
-            // Word already found
-            currentWord = ""
-            return
-        }
-        if isWordOnBoard(word: lowercasedWord) {
-            foundWords.append(lowercasedWord)
-            score += calculateScore(for: lowercasedWord)
-        }
-        currentWord = ""
-        if score > highScore {
-            highScore = score
-            UserDefaults.standard.set(highScore, forKey: "HighScore")
-        }
-    }
-    
-    func isWordOnBoard(word: String) -> Bool {
-        guard !word.isEmpty else { return false }
-        var visited = Array(repeating: Array(repeating: false, count: grid[0].count), count: grid.count)
-        
-        for row in 0..<grid.count {
-            for col in 0..<grid[row].count {
-                if grid[row][col].lowercased() == word.first {
-                    if dfs(word: word, index: 0, row: row, col: col, visited: &visited) {
-                        return true
-                    }
-                }
-            }
-        }
-        return false
-    }
-    
-    private func calculateScore(for word: String) -> Int {
-        switch word.count {
-        case 3...4:
-            return 1
-        case 5:
-            return 2
-        case 6:
-            return 3
-        case 7:
-            return 5
-        default:
-            return 11
-        }
-    }
-    
-    private func dfs(word: String, index: Int, row: Int, col: Int, visited: inout [[Bool]]) -> Bool {
-        if index == word.count {
-            return true
-        }
-        // Check boundaries and character match
-        if row < 0 || row >= grid.count || col < 0 || col >= grid[row].count {
-            return false
-        }
-        if visited[row][col] || grid[row][col].lowercased() != String(word[word.index(word.startIndex, offsetBy: index)]).lowercased() {
-            return false
-        }
-        
-        // Mark as visited
-        visited[row][col] = true
-        
-        // Explore all adjacent cells
-        let directions = [(-1, -1), (-1, 0), (-1, 1),
-                          (0, -1),          (0, 1),
-                          (1, -1),  (1, 0), (1, 1)]
-        
-        for direction in directions {
-            let newRow = row + direction.0
-            let newCol = col + direction.1
-            if dfs(word: word, index: index + 1, row: newRow, col: newCol, visited: &visited) {
-                return true
-            }
-        }
-        
-        // Backtrack
-        visited[row][col] = false
-        return false
     }
 }
