@@ -16,7 +16,7 @@ struct ContentView: View {
 
     // Stores the currently selected positions (tiles) on the Boggle board.
     // @State is used for simple, changing values. When it changes, the view updates.
-    @State private var selected: [Position] = []
+    @State private var selected: [Position] = []		// Creates a list of Position structs initialized as an empty list
 
     // Controls if the settings/rules sheet is shown.
     // When set to true, a modal sheet appears.
@@ -73,17 +73,22 @@ struct ContentView: View {
 
     // Handles selection of a tile/position in the grid.
     // Only allows selection if it's touching the last selected, and not already selected.
-    private func select(_ pos: Position) {
-        if let last = selected.last {
-            // Only allow selection if the tapped tile is adjacent to the last one.
-            guard abs(last.row - pos.row) <= 1 && abs(last.col - pos.col) <= 1 else { return }
-        }
-        if !selected.contains(pos) {
-            // Add the tile and update the current word in the view model.
-            selected.append(pos)
-            vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
-        }
-    }
+	private func select(_ pos: Position) {
+		// If the tapped tile is the last in the list, allow unselecting it ("undo" the last move)
+		if selected.last == pos {
+			selected.removeLast()
+			vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
+			return
+		}
+		// Otherwise, only allow selection if legal
+		if let last = selected.last {
+			guard abs(last.row - pos.row) <= 1 && abs(last.col - pos.col) <= 1 else { return }
+		}
+		if !selected.contains(pos) {
+			selected.append(pos)
+			vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
+		}
+	}
 
     // Formats the time remaining as MM:SS.
     private func formatTime(_ s: Int) -> String {
