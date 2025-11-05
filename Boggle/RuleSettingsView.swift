@@ -4,84 +4,122 @@
 
 import SwiftUI
 
-/// A SwiftUI view that allows the user to configure game rule options.
-/// This view presents toggles for different rule settings and keeps them
-/// in sync with the game's view model.
+/// A SwiftUI view that allows the user to configure the full Boggle rule set,
+/// including round duration, board size, base rules, and individual handicaps.
 struct RuleSettingsView: View {
-    
-    /// The observed view model that holds the current game state and options.
-    /// Changes to this object will update the view automatically.
+
     @ObservedObject var vm: GameViewModel
-    
-    /// Local state representing the currently selected rule options in this view.
-    /// This is initialized from the view model's current options and updated
-    /// when toggles change, keeping the UI responsive.
-    @State private var opts: RuleOptions
-    
-    /// Environment variable to allow dismissing the view.
-    /// This is commonly used in modal presentations to programmatically close the view.
+    @State private var draft: RuleConfiguration
     @Environment(\.dismiss) private var dismiss
-    
-    /// Custom initializer that takes the view model and initializes
-    /// the local state `opts` from the view model's current options.
-    /// This ensures the toggles reflect the current game settings when shown.
-    /// - Parameter vm: The game view model containing rule options.
+    @FocusState private var focusedHandicap: PlayerHandicap.ID?
+
     init(vm: GameViewModel) {
         self.vm = vm
-        _opts = State(initialValue: vm.currentOptions)
+        _draft = State(initialValue: vm.ruleConfiguration)
     }
-    
-    /// The main body of the view, defining its UI hierarchy.
-    /// Uses a navigation view containing a form with toggles for each rule option.
-    /// Also includes a toolbar with a Close button to dismiss the sheet.
+
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
-                // Toggle for enabling/disabling the minimum length rule.
-                // The binding connects the toggle's state to the local opts set,
-                // which in turn updates the view model.
-                Toggle("Minimum length ≥ 3", isOn: binding(for: .minLength))
-                
-                // Toggle for enforcing unique words only.
-                // Uses the same pattern to keep local state and view model in sync.
-                Toggle("Unique words only",   isOn: binding(for: .uniqueWords))
+                generalSection
+                wordRulesSection
+                handicapsSection
             }
-            .navigationTitle("Rules") // Title of the navigation bar
-            
-            // Toolbar with a cancellation action placement.
-            // Provides a Close button that calls dismiss to close this view.
+            .navigationTitle("Rules & Handicaps")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        vm.applyConfiguration(draft)
                         dismiss()
                     }
+                    .disabled(!isConfigurationValid)
                 }
             }
         }
     }
-    
-    /// Helper method that creates a two-way binding between a rule option flag
-    /// in the local `opts` state and the corresponding toggle.
-    ///
-    /// When the toggle changes, this updates the local state and notifies the view model.
-    /// When the local state changes, the toggle updates accordingly.
-    ///
-    /// - Parameter flag: The specific RuleOptions flag to bind.
-    /// - Returns: A Binding<Bool> that can be used with SwiftUI controls.
-    private func binding(for flag: RuleOptions) -> Binding<Bool> {
-        Binding {
-            // Return true if the current options contain the given flag.
-            opts.contains(flag)
-        } set: { newVal in
-            // On toggle change, insert or remove the flag in local state.
-            if newVal {
-                opts.insert(flag)
-            } else {
-                opts.remove(flag)
+
+    private var generalSection: some View {
+        Section("Round") {
+            Picker("Board Size", selection: $draft.boardSize) {
+                ForEach([4, 5], id: \.self) { size in
+                    Text("\(size) x \(size)").tag(size)
+                }
             }
-            // Notify the view model to toggle the option accordingly,
-            // maintaining global state consistency.
-            vm.toggle(flag)
+
+            Stepper(value: $draft.roundDuration, in: 60...600, step: 30) {
+                Text("Duration: \(formatTime(draft.roundDuration))")
+            }
         }
+    }
+
+    private var wordRulesSection: some View {
+        Section("Word Rules") {
+            Stepper(value: $draft.baseMinWordLength, in: 2...10) {
+                Text("Minimum length: \(draft.baseMinWordLength)")
+            }
+            Toggle("Require unique words", isOn: $draft.requireUniqueWords)
+        }
+    }
+
+    private var handicapsSection: some View {
+        Section("Handicaps") {
+            if draft.handicaps.isEmpty {
+                Text("Create personalized rules for different players.")
+                    .foregroundColor(.secondary)
+            }
+
+            ForEach($draft.handicaps) { $handicap in
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("Player name", text: $handicap.name)
+                        .textInputAutocapitalization(.words)
+                        .focused($focusedHandicap, equals: handicap.id)
+
+                    Stepper(value: $handicap.minWordLength, in: 2...10) {
+                        Text("Minimum length: \(handicap.minWordLength)")
+                    }
+
+                    Toggle("Custom round duration", isOn: Binding(
+                        get: { handicap.roundDuration != nil },
+                        set: { enabled in
+                            handicap.roundDuration = enabled ? draft.roundDuration : nil
+                        }
+                    ))
+
+                    if let _ = handicap.roundDuration {
+                        Stepper(value: Binding(
+                            get: { handicap.roundDuration ?? draft.roundDuration },
+                            set: { handicap.roundDuration = $0 }
+                        ), in: 30...900, step: 30) {
+                            Text("Custom duration: \(formatTime(handicap.roundDuration ?? draft.roundDuration))")
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .onDelete { indexSet in
+                draft.handicaps.remove(atOffsets: indexSet)
+            }
+
+            Button {
+                let newHandicap = PlayerHandicap(name: "New Player", minWordLength: max(2, draft.baseMinWordLength))
+                draft.handicaps.append(newHandicap)
+                focusedHandicap = newHandicap.id
+            } label: {
+                Label("Add Handicap", systemImage: "plus.circle.fill")
+            }
+        }
+    }
+
+    private var isConfigurationValid: Bool {
+        draft.boardSize >= 3 && draft.roundDuration > 0 && draft.baseMinWordLength >= 2
+    }
+
+    private func formatTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let remainder = seconds % 60
+        return String(format: "%02d:%02d", minutes, remainder)
     }
 }

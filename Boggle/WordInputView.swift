@@ -21,14 +21,18 @@ struct WordInputView: View {
             // TextField lets the user type their word
             // The text is linked ('bound') to 'word', so it updates live as the user types.
             TextField("Enter word", text: $word)
-                .textFieldStyle(.roundedBorder) // Adds a nice border to the input
-                .padding(.horizontal)           // Adds space to left and right
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .foregroundColor(.white)
+                .disableAutocorrection(true)
+                .textInputAutocapitalization(.never)
+                .font(.headline)
             // Submit button for entering the word
             Button("Submit", action: onSubmit)
-                .padding(8)                      // Space inside button for easier tapping
-                .background(Color.green)         // Makes button green
-                .foregroundColor(.white)         // White text for contrast
-                .cornerRadius(6)                 // Rounded corners for modern look
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
                 .disabled(word.isEmpty)          // Button is disabled if text is empty
         }
         .padding(.vertical)  // Adds space above and below the whole row

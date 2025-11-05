@@ -20,7 +20,7 @@ struct UserMessage: Identifiable, Equatable {
 @MainActor final class GameViewModel: ObservableObject {
     // MARK: - UI-bound state (Published so SwiftUI updates automatically)
     // The current letter grid for the game.
-    @Published var grid: [[Character]] = []
+    @Published var grid: [[String]] = []
     // The word the user is currently building/selecting.
     @Published var currentWord = ""
     // A running list of words the user has found so far.
@@ -28,7 +28,7 @@ struct UserMessage: Identifiable, Equatable {
     // The user's current score for this round.
     @Published var score = 0
     // Time left in the round (in seconds).
-    @Published var timeRemaining = 180
+    @Published var timeRemaining = RuleConfiguration.default.roundDuration
     // Highest score ever achieved (across games).
     @Published var highScore = 0
     // Holds a message to present to the user, e.g., invalid word, end of game, etc.
@@ -42,27 +42,46 @@ struct UserMessage: Identifiable, Equatable {
     // Handles rule enforcement for word validity.
     private var ruleEngine: RuleEngine!
 
-    // MARK: - Persisted rule bit‑mask (stores the user's rule preferences)
-    // @AppStorage persists the value using UserDefaults, so rule options are saved between app launches.
-    // 'private' so only this class changes the value directly.
-    @AppStorage("ruleOptions") private var optionsRaw = RuleOptions.all.rawValue
+    // MARK: - Persisted configuration
+    @AppStorage("ruleConfiguration") private var storedConfigurationData: Data = Data()
 
-    /// Exposes the current rule options for use in the settings view (read-only).
-    var currentOptions: RuleOptions { RuleOptions(rawValue: optionsRaw) }
+    /// The full rule configuration for the game (persisted between launches).
+    @Published private(set) var ruleConfiguration: RuleConfiguration
+    /// Currently selected handicap (if any) that adjusts the base configuration.
+    @Published var activeHandicapID: PlayerHandicap.ID? {
+        didSet { rebuildRules() }
+    }
 
     // MARK: - Init (setup)
     init() {
-        rebuildRules()      // Set up rule engine based on saved options
+        if let config = try? JSONDecoder().decode(RuleConfiguration.self, from: storedConfigurationData),
+           config.boardSize >= 3 {
+            ruleConfiguration = config
+        } else {
+            ruleConfiguration = .default
+        }
+
+        timeRemaining = ruleConfiguration.roundDuration
+        rebuildRules()      // Set up rule engine based on saved configuration
         loadDictionary()    // Load valid word list from file
         highScore = UserDefaults.standard.integer(forKey: "HighScore") // Load best score
     }
 
     // MARK: - Game control (main game logic)
     // Starts a new game: creates a new grid, resets word/score/timer, and starts the countdown.
-    func startGame() { generateGrid(); resetGame(); startTimer() }
+    func startGame() {
+        generateGrid()
+        resetGame()
+        startTimer()
+    }
 
     // Resets the round state: clears found words, resets score, resets time, empties current word.
-    func resetGame() { foundWords.removeAll(); score = 0; currentWord = ""; timeRemaining = 180 }
+    func resetGame() {
+        foundWords.removeAll()
+        score = 0
+        currentWord = ""
+        timeRemaining = activeRoundDuration
+    }
 
     // Called when the user tries to submit a word.
     // Validates the word, checks rules and dictionary, updates score and state as needed.
@@ -85,19 +104,45 @@ struct UserMessage: Identifiable, Equatable {
         currentWord = "" // Clear the current word for next turn
     }
 
-    // MARK: - Rule toggling (settings/rules UI interaction)
-    // Toggles a specific rule on/off using bitwise XOR.
-    func toggle(_ flag: RuleOptions) { optionsRaw ^= flag.rawValue; rebuildRules() }
+    // MARK: - Rule configuration (settings/rules UI interaction)
+    func applyConfiguration(_ newConfig: RuleConfiguration) {
+        let boardSizeChanged = newConfig.boardSize != ruleConfiguration.boardSize
+        ruleConfiguration = newConfig
+        persistConfiguration()
+        rebuildRules()
+        if boardSizeChanged {
+            foundWords.removeAll()
+            score = 0
+            currentWord = ""
+            generateGrid()
+        }
+        if let id = activeHandicapID,
+           !ruleConfiguration.handicaps.contains(where: { $0.id == id }) {
+            activeHandicapID = nil
+        }
+        // Ensure the timer reflects the latest settings when a game is active.
+        timeRemaining = activeRoundDuration
+    }
 
-    // Rebuild the rule engine using the latest toggles/options.
+    private func persistConfiguration() {
+        if let data = try? JSONEncoder().encode(ruleConfiguration) {
+            storedConfigurationData = data
+        }
+    }
+
+    /// Rebuild the rule engine using the latest configuration and active handicap.
     private func rebuildRules() {
-        let opts = RuleOptions(rawValue: optionsRaw)
-        var r: [GameRule] = []
-        // Optionally require minimum length
-        if opts.contains(.minLength)   { r.append(MinLengthRule(minLen: 3)) }
-        // Optionally require unique words
-        if opts.contains(.uniqueWords) { r.append(UniqueWordRule()) }
-        ruleEngine = RuleEngine(r) // Create new engine with these rules
+        var rules: [GameRule] = [PathContinuityRule(), PathWordMatchRule()]
+
+        let minLength = activeMinWordLength
+        if minLength > 1 {
+            rules.append(MinLengthRule(minLen: minLength))
+        }
+        if ruleConfiguration.requireUniqueWords {
+            rules.append(UniqueWordRule())
+        }
+
+        ruleEngine = RuleEngine(rules) // Create new engine with these rules
     }
 
     // MARK: - Utility
@@ -106,18 +151,34 @@ struct UserMessage: Identifiable, Equatable {
         guard let path = Bundle.main.path(forResource: "dictionary", ofType: "txt"),
               let content = try? String(contentsOfFile: path) else { return }
         // Store all words (lowercased) in a set for fast lookup
-        dictionary = Set(content.split(separator: "\n").map { $0.lowercased() })
+        dictionary = Set(
+            content
+                .split(whereSeparator: { $0.isNewline })
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+                .filter { !$0.isEmpty }
+        )
     }
 
     // Creates a new 4x4 grid of random uppercase letters for the game board.
     private func generateGrid() {
-        let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        grid = (0..<4).map { _ in (0..<4).map { _ in letters.randomElement()! } }
+        grid = BoggleDice.rollBoard(size: ruleConfiguration.boardSize)
     }
 
     // Calculates how many points a word earns (longer words score more).
     private func calculateScore(for w: String) -> Int {
-        switch w.count { case 3...4: 1; case 5: 2; case 6: 3; case 7: 5; default: 11 }
+        switch w.count {
+        case 0...2: return 0
+        case 3...4: return 1
+        case 5: return 2
+        case 6: return 3
+        case 7: return 5
+        default: return 11
+        }
+    }
+
+    /// Public helper for the UI to show how many points a previously found word earned.
+    func points(for word: String) -> Int {
+        calculateScore(for: word)
     }
 
     // MARK: - Timer logic
@@ -137,6 +198,24 @@ struct UserMessage: Identifiable, Equatable {
             timeRemaining -= 1
         } else {
             timer?.cancel() // Time's up
+            if userMessage == nil {
+                userMessage = UserMessage(message: "Time's up! Start a new game from the toolbar to play again.")
+            }
         }
+    }
+
+    private var activeHandicap: PlayerHandicap? {
+        guard let id = activeHandicapID else { return nil }
+        return ruleConfiguration.handicaps.first(where: { $0.id == id })
+    }
+
+    var activeHandicapName: String? { activeHandicap?.name }
+
+    var activeMinWordLength: Int {
+        max(2, activeHandicap?.minWordLength ?? ruleConfiguration.baseMinWordLength)
+    }
+
+    var activeRoundDuration: Int {
+        activeHandicap?.roundDuration ?? ruleConfiguration.roundDuration
     }
 }

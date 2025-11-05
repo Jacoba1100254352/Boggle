@@ -19,8 +19,11 @@
 		F44DF3D12CB33BE700987082 /* BoggleGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D02CB33BE300987082 /* BoggleGridView.swift */; };
 		F44DF3D32CB33C1800987082 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D22CB33C1400987082 /* ContentView.swift */; };
 		F44DF3D52CB33C2E00987082 /* WordInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D42CB33C2A00987082 /* WordInputView.swift */; };
-		F44DF3D72CB33C4300987082 /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D62CB33C4000987082 /* GameViewModel.swift */; };
-		F44DF3D92CB33C9600987082 /* Position.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D82CB33C9400987082 /* Position.swift */; };
+                F44DF3D72CB33C4300987082 /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D62CB33C4000987082 /* GameViewModel.swift */; };
+                F44DF3D92CB33C9600987082 /* Position.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44DF3D82CB33C9400987082 /* Position.swift */; };
+                F4A1F0112FFF000100000001 /* RuleConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A1F0012FFF000100000001 /* RuleConfiguration.swift */; };
+                F4A1F0122FFF000100000001 /* BoggleDice.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A1F0022FFF000100000001 /* BoggleDice.swift */; };
+                F4A1F0132FFF000100000001 /* dictionary.txt in Resources */ = {isa = PBXBuildFile; fileRef = F4A1F0032FFF000100000001 /* dictionary.txt */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,10 +57,13 @@
 		F44913DE2AF59541001BBA2D /* BoggleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoggleUITests.swift; sourceTree = "<group>"; };
 		F44913E02AF59541001BBA2D /* BoggleUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoggleUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		F44DF3D02CB33BE300987082 /* BoggleGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoggleGridView.swift; sourceTree = "<group>"; };
-		F44DF3D22CB33C1400987082 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		F44DF3D42CB33C2A00987082 /* WordInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordInputView.swift; sourceTree = "<group>"; };
-		F44DF3D62CB33C4000987082 /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
-		F44DF3D82CB33C9400987082 /* Position.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Position.swift; sourceTree = "<group>"; };
+                F44DF3D22CB33C1400987082 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+                F44DF3D42CB33C2A00987082 /* WordInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordInputView.swift; sourceTree = "<group>"; };
+                F44DF3D62CB33C4000987082 /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
+                F44DF3D82CB33C9400987082 /* Position.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Position.swift; sourceTree = "<group>"; };
+                F4A1F0012FFF000100000001 /* RuleConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleConfiguration.swift; sourceTree = "<group>"; };
+                F4A1F0022FFF000100000001 /* BoggleDice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoggleDice.swift; sourceTree = "<group>"; };
+                F4A1F0032FFF000100000001 /* dictionary.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = dictionary.txt; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,11 +120,14 @@
 				F44DF3D22CB33C1400987082 /* ContentView.swift */,
 				F44DF3D02CB33BE300987082 /* BoggleGridView.swift */,
 				F44913C42AF59537001BBA2D /* Main.storyboard */,
-				F44913C72AF59540001BBA2D /* Assets.xcassets */,
-				F44913C92AF59540001BBA2D /* LaunchScreen.storyboard */,
-				F42588712E11BA9100333C40 /* Rules.swift */,
-				F42588732E11BB0100333C40 /* RuleSettingsView.swift */,
-				F42588772E11D29F00333C40 /* BoggleApp.swift */,
+                                F44913C72AF59540001BBA2D /* Assets.xcassets */,
+                                F44913C92AF59540001BBA2D /* LaunchScreen.storyboard */,
+                                F42588712E11BA9100333C40 /* Rules.swift */,
+                                F4A1F0012FFF000100000001 /* RuleConfiguration.swift */,
+                                F4A1F0022FFF000100000001 /* BoggleDice.swift */,
+                                F4A1F0032FFF000100000001 /* dictionary.txt */,
+                                F42588732E11BB0100333C40 /* RuleSettingsView.swift */,
+                                F42588772E11D29F00333C40 /* BoggleApp.swift */,
 			);
 			path = Boggle;
 			sourceTree = "<group>";
@@ -240,14 +249,15 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		F44913B52AF59536001BBA2D /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				F44913C62AF59537001BBA2D /* Main.storyboard in Resources */,
-				F44913C82AF59540001BBA2D /* Assets.xcassets in Resources */,
-				F44913CB2AF59540001BBA2D /* LaunchScreen.storyboard in Resources */,
-			);
+                F44913B52AF59536001BBA2D /* Resources */ = {
+                        isa = PBXResourcesBuildPhase;
+                        buildActionMask = 2147483647;
+                        files = (
+                                F44913C62AF59537001BBA2D /* Main.storyboard in Resources */,
+                                F44913C82AF59540001BBA2D /* Assets.xcassets in Resources */,
+                                F44913CB2AF59540001BBA2D /* LaunchScreen.storyboard in Resources */,
+                                F4A1F0132FFF000100000001 /* dictionary.txt in Resources */,
+                        );
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F44913CE2AF59541001BBA2D /* Resources */ = {
@@ -270,15 +280,17 @@
 		F44913B32AF59536001BBA2D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-				F44DF3D12CB33BE700987082 /* BoggleGridView.swift in Sources */,
-				F42588742E11BB0100333C40 /* RuleSettingsView.swift in Sources */,
-				F44DF3D32CB33C1800987082 /* ContentView.swift in Sources */,
-				F42588782E11D29F00333C40 /* BoggleApp.swift in Sources */,
-				F42588722E11BA9100333C40 /* Rules.swift in Sources */,
-				F44DF3D52CB33C2E00987082 /* WordInputView.swift in Sources */,
-				F44DF3D92CB33C9600987082 /* Position.swift in Sources */,
-				F44DF3D72CB33C4300987082 /* GameViewModel.swift in Sources */,
+                        files = (
+                                F44DF3D12CB33BE700987082 /* BoggleGridView.swift in Sources */,
+                                F42588742E11BB0100333C40 /* RuleSettingsView.swift in Sources */,
+                                F44DF3D32CB33C1800987082 /* ContentView.swift in Sources */,
+                                F4A1F0112FFF000100000001 /* RuleConfiguration.swift in Sources */,
+                                F4A1F0122FFF000100000001 /* BoggleDice.swift in Sources */,
+                                F42588782E11D29F00333C40 /* BoggleApp.swift in Sources */,
+                                F42588722E11BA9100333C40 /* Rules.swift in Sources */,
+                                F44DF3D52CB33C2E00987082 /* WordInputView.swift in Sources */,
+                                F44DF3D92CB33C9600987082 /* Position.swift in Sources */,
+                                F44DF3D72CB33C4300987082 /* GameViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
