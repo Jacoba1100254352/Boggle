@@ -6,41 +6,70 @@ import SwiftUI
 
 // =============================================================
 // BoggleGridView: Displays the Boggle game board as a grid of letters.
-// Shows which tiles are selected, and lets the user tap to select tiles.
+// Highlights the most recently discovered path with subtle numbering.
 // =============================================================
 struct BoggleGridView: View {
-    // The 2D grid of characters (letters) to display.
-    let grid: [[Character]]
-    // @Binding lets this view read and update the parent's list of selected positions.
-    @Binding var selectedLetters: [Position]
-    // 'onSelect' is a closure (function) called when a tile is tapped, passing the tapped tile's position.
-    var onSelect: (Position) -> Void
+    /// The letter grid to present.
+    let grid: [[String]]
+    /// Ordered path that produced the latest accepted word.
+    let highlightedPath: [Position]
+
+    private var highlightLookup: [Position: Int] {
+        Dictionary(uniqueKeysWithValues: highlightedPath.enumerated().map { ($1, $0 + 1) })
+    }
 
     var body: some View {
-        // Outer VStack: lays out the rows vertically
-        VStack(spacing: 5) {
-            // For each row in the grid...
+        VStack(spacing: 8) {
             ForEach(grid.indices, id: \.self) { row in
-                // HStack: lays out the tiles in this row horizontally
-                HStack(spacing: 5) {
-                    // For each column (tile) in this row...
+                HStack(spacing: 8) {
                     ForEach(grid[row].indices, id: \.self) { col in
-                        // Create a Position for this tile
-                        let pos = Position(row: row, col: col)
-                        // Show the letter in a styled square tile
-                        Text(String(grid[row][col]))
-                            .font(.largeTitle) // Big readable letter
-                            .frame(width: 60, height: 60) // Fixed tile size
-                            // Tile color: greenish if selected, blue otherwise
-                            .background(selectedLetters.contains(pos) ? .green.opacity(0.7) : .blue.opacity(0.7))
-                            .foregroundColor(.white) // White letter
-                            .cornerRadius(8) // Rounded tile corners
-                            // When tapped, call onSelect to notify parent view
-                            .onTapGesture { onSelect(pos) }
+                        let position = Position(row: row, col: col)
+                        TileView(value: grid[row][col], order: highlightLookup[position])
                     }
                 }
             }
         }
-        .padding() // Adds space around the grid
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 6)
+    }
+}
+
+private struct TileView: View {
+    let value: String
+    let order: Int?
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tileGradient)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(order == nil ? Color.white.opacity(0.3) : Color.green.opacity(0.8), lineWidth: order == nil ? 1 : 3)
+                )
+                .frame(width: 68, height: 68)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+
+            Text(value)
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+
+            if let order {
+                Text("\(order)")
+                    .font(.caption2.bold())
+                    .padding(6)
+                    .background(Color.green.opacity(0.85), in: Capsule())
+                    .foregroundStyle(.white)
+                    .padding(6)
+            }
+        }
+    }
+
+    private var tileGradient: LinearGradient {
+        if order == nil {
+            return LinearGradient(colors: [Color.blue.opacity(0.85), Color.blue.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        } else {
+            return LinearGradient(colors: [Color.green.opacity(0.95), Color.green.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
     }
 }

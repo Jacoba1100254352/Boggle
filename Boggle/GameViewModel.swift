@@ -1,142 +1,360 @@
 // =============================================================
-// GameViewModel.swift
+// GameViewModel.swift – Core game logic & state container
 // =============================================================
 
 import Combine
 import SwiftUI
 
-// UserMessage: A simple structure to hold messages for the user (e.g., errors or alerts).
-// Conforms to Identifiable so it can be used for SwiftUI alerts, and Equatable for comparisons.
 struct UserMessage: Identifiable, Equatable {
-    let id = UUID() // Unique identifier for SwiftUI
-    let message: String // The actual message to show
+    let id = UUID()
+    let message: String
 }
 
-// =============================================================
-// GameViewModel: Core logic and state-holder for the Boggle game.
-// Handles game state, rules, timer, score, and dictionary lookups.
-// MainActor: Ensures updates happen on the main/UI thread.
-// =============================================================
 @MainActor final class GameViewModel: ObservableObject {
-    // MARK: - UI-bound state (Published so SwiftUI updates automatically)
-    // The current letter grid for the game.
-    @Published var grid: [[Character]] = []
-    // The word the user is currently building/selecting.
-    @Published var currentWord = ""
-    // A running list of words the user has found so far.
-    @Published var foundWords: [String] = []
-    // The user's current score for this round.
-    @Published var score = 0
-    // Time left in the round (in seconds).
-    @Published var timeRemaining = 180
-    // Highest score ever achieved (across games).
-    @Published var highScore = 0
-    // Holds a message to present to the user, e.g., invalid word, end of game, etc.
+    // MARK: - Published UI state
+    @Published private(set) var grid: [[String]] = []
+    @Published var currentWord: String = ""
+    @Published private(set) var highlightedPath: [Position] = []
+    @Published private(set) var foundWords: [String] = []
+    @Published private(set) var playerStates: [PlayerState]
+    @Published private(set) var activePlayerIndex: Int = 0
+    @Published private(set) var settings: GameSettings
+    @Published private(set) var timeRemaining: Int
+    @Published private(set) var highScore: Int
     @Published var userMessage: UserMessage? = nil
 
-    // MARK: - Private helpers (not exposed to the view)
-    // Used to manage the repeating timer for countdown.
+    // MARK: - Private state
     private var timer: AnyCancellable?
-    // The set of valid words loaded from a dictionary file.
-    private var dictionary = Set<String>()
-    // Handles rule enforcement for word validity.
-    private var ruleEngine: RuleEngine!
+    private var dictionary: Set<String> = []
+    private var usedWords: Set<String> = []
+    private var hasStartedRound = false
 
-    // MARK: - Persisted rule bit‑mask (stores the user's rule preferences)
-    // @AppStorage persists the value using UserDefaults, so rule options are saved between app launches.
-    // 'private' so only this class changes the value directly.
-    @AppStorage("ruleOptions") private var optionsRaw = RuleOptions.all.rawValue
+    private static let settingsKey = "GameSettings.v1"
+    private static let playersKey = "PlayerProfiles.v1"
+    private static let highScoreKey = "HighScore"
 
-    /// Exposes the current rule options for use in the settings view (read-only).
-    var currentOptions: RuleOptions { RuleOptions(rawValue: optionsRaw) }
-
-    // MARK: - Init (setup)
+    // MARK: - Init
     init() {
-        rebuildRules()      // Set up rule engine based on saved options
-        loadDictionary()    // Load valid word list from file
-        highScore = UserDefaults.standard.integer(forKey: "HighScore") // Load best score
-    }
-
-    // MARK: - Game control (main game logic)
-    // Starts a new game: creates a new grid, resets word/score/timer, and starts the countdown.
-    func startGame() { generateGrid(); resetGame(); startTimer() }
-
-    // Resets the round state: clears found words, resets score, resets time, empties current word.
-    func resetGame() { foundWords.removeAll(); score = 0; currentWord = ""; timeRemaining = 180 }
-
-    // Called when the user tries to submit a word.
-    // Validates the word, checks rules and dictionary, updates score and state as needed.
-    func submitWord(selectedLetters: [Position]) {
-        let word = currentWord.lowercased() // Always compare in lowercase
-        guard !word.isEmpty else { return } // Ignore empty submissions
-        let ctx = GameContext(grid: grid, previousWords: Set(foundWords))
-        switch ruleEngine.evaluate(word: word, path: selectedLetters, in: ctx) {
-        case .success(let bonus):
-            // If custom rules pass, check if it's a real word in our dictionary
-            guard dictionary.contains(word) else { userMessage = UserMessage(message: "Not in dictionary"); return }
-            foundWords.append(word) // Save the new word
-            score += bonus + calculateScore(for: word) // Add points for this word
-            // Update high score if needed
-            if score > highScore { highScore = score; UserDefaults.standard.set(highScore, forKey: "HighScore") }
-        case .failure(let why):
-            // If rules failed, show the reason to the user
-            userMessage = UserMessage(message: why)
+        settings = Self.loadSettings()
+        let profiles = Self.loadPlayerProfiles()
+        playerStates = profiles.map { PlayerState(profile: $0) }
+        if playerStates.isEmpty {
+            playerStates = defaultPlayers.map { PlayerState(profile: $0) }
         }
-        currentWord = "" // Clear the current word for next turn
+        activePlayerIndex = 0
+        timeRemaining = settings.roundLength
+        highScore = UserDefaults.standard.integer(forKey: Self.highScoreKey)
+        loadDictionary()
+        grid = BoggleDice.classicBoard()
+        rebuildUsedWordsSet()
+        updateFoundWordsDisplay()
     }
 
-    // MARK: - Rule toggling (settings/rules UI interaction)
-    // Toggles a specific rule on/off using bitwise XOR.
-    func toggle(_ flag: RuleOptions) { optionsRaw ^= flag.rawValue; rebuildRules() }
+    deinit { timer?.cancel() }
 
-    // Rebuild the rule engine using the latest toggles/options.
-    private func rebuildRules() {
-        let opts = RuleOptions(rawValue: optionsRaw)
-        var r: [GameRule] = []
-        // Optionally require minimum length
-        if opts.contains(.minLength)   { r.append(MinLengthRule(minLen: 3)) }
-        // Optionally require unique words
-        if opts.contains(.uniqueWords) { r.append(UniqueWordRule()) }
-        ruleEngine = RuleEngine(r) // Create new engine with these rules
+    // MARK: - Accessors for the view
+    var board: [[String]] { grid }
+
+    var activePlayer: PlayerState? {
+        guard playerStates.indices.contains(activePlayerIndex) else { return nil }
+        return playerStates[activePlayerIndex]
     }
 
-    // MARK: - Utility
-    // Loads a list of valid words from a dictionary file in the app bundle.
-    private func loadDictionary() {
-        guard let path = Bundle.main.path(forResource: "dictionary", ofType: "txt"),
-              let content = try? String(contentsOfFile: path) else { return }
-        // Store all words (lowercased) in a set for fast lookup
-        dictionary = Set(content.split(separator: "\n").map { $0.lowercased() })
+    var activePlayerName: String {
+        activePlayer?.profile.name ?? ""
     }
 
-    // Creates a new 4x4 grid of random uppercase letters for the game board.
-    private func generateGrid() {
-        let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        grid = (0..<4).map { _ in (0..<4).map { _ in letters.randomElement()! } }
+    var activePlayerMinimumLength: Int {
+        guard let player = activePlayer else { return settings.minimumWordLength }
+        return minimumWordLength(for: player)
     }
 
-    // Calculates how many points a word earns (longer words score more).
-    private func calculateScore(for w: String) -> Int {
-        switch w.count { case 3...4: 1; case 5: 2; case 6: 3; case 7: 5; default: 11 }
+    var isRoundActive: Bool { timeRemaining > 0 }
+
+    func scoreForWord(_ word: String) -> Int {
+        calculateScore(for: word.lowercased())
     }
 
-    // MARK: - Timer logic
-    // Starts (or restarts) the countdown timer for the game.
+    // MARK: - Public API consumed by the views
+    func ensureGameStarted() {
+        guard !hasStartedRound else { return }
+        startGame()
+    }
+
+    func startGame() {
+        hasStartedRound = true
+        timer?.cancel()
+        timeRemaining = settings.roundLength
+        usedWords.removeAll()
+        highlightedPath = []
+        currentWord = ""
+        for index in playerStates.indices {
+            playerStates[index].resetForNewRound()
+        }
+        updateFoundWordsDisplay()
+        savePlayerProfiles()
+        grid = BoggleDice.classicBoard()
+        startTimer()
+    }
+
+    func shuffleBoard() {
+        grid = BoggleDice.classicBoard()
+        if !settings.highlightLastWord {
+            highlightedPath = []
+        }
+    }
+
+    func submitCurrentWord() {
+        let trimmed = currentWord.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !trimmed.isEmpty else { return }
+        guard isRoundActive else {
+            userMessage = UserMessage(message: "Time is up! Start a new round to keep playing.")
+            return
+        }
+        guard var player = activePlayer else { return }
+
+        let requiredLength = minimumWordLength(for: player)
+        guard trimmed.count >= requiredLength else {
+            userMessage = UserMessage(message: "Word must be at least \(requiredLength) letters for \(player.profile.name).")
+            return
+        }
+
+        guard dictionary.contains(trimmed) else {
+            userMessage = UserMessage(message: "\(trimmed.uppercased()) is not in the dictionary.")
+            return
+        }
+
+        if settings.enforceUniqueWords {
+            guard !usedWords.contains(trimmed) else {
+                userMessage = UserMessage(message: "That word has already been claimed this round.")
+                return
+            }
+        } else {
+            guard !player.words.contains(trimmed) else {
+                userMessage = UserMessage(message: "You already played that word.")
+                return
+            }
+        }
+
+        guard let path = findPath(for: trimmed) else {
+            userMessage = UserMessage(message: "\(trimmed.uppercased()) cannot be formed on this board.")
+            return
+        }
+
+        player.words.append(trimmed)
+        player.score += calculateScore(for: trimmed)
+
+        playerStates[activePlayerIndex] = player
+        if settings.enforceUniqueWords {
+            usedWords.insert(trimmed)
+        }
+
+        if settings.highlightLastWord {
+            highlightedPath = path
+        } else {
+            highlightedPath = []
+        }
+
+        currentWord = ""
+        updateFoundWordsDisplay()
+        updateHighScoreIfNeeded(with: player.score)
+    }
+
+    func selectPlayer(_ playerID: PlayerProfile.ID) {
+        guard let index = playerStates.firstIndex(where: { $0.id == playerID }) else { return }
+        activePlayerIndex = index
+        updateFoundWordsDisplay()
+    }
+
+    func apply(settings newSettings: GameSettings, players newProfiles: [PlayerProfile]) {
+        settings = newSettings
+        saveSettings()
+
+        var sanitizedProfiles = newProfiles
+        if sanitizedProfiles.isEmpty {
+            sanitizedProfiles = defaultPlayers
+        }
+
+        let existingStates = Dictionary(uniqueKeysWithValues: playerStates.map { ($0.id, $0) })
+        playerStates = sanitizedProfiles.map { profile in
+            if var preserved = existingStates[profile.id] {
+                preserved.profile = profile
+                return preserved
+            } else {
+                return PlayerState(profile: profile)
+            }
+        }
+
+        if !playerStates.indices.contains(activePlayerIndex) {
+            activePlayerIndex = 0
+        }
+
+        savePlayerProfiles()
+        rebuildUsedWordsSet()
+
+        if timeRemaining > settings.roundLength {
+            timeRemaining = settings.roundLength
+        }
+
+        if !settings.highlightLastWord {
+            highlightedPath = []
+        }
+
+        updateFoundWordsDisplay()
+    }
+
+    // MARK: - Private helpers
     private func startTimer() {
-        timer?.cancel() // Stop any existing timer
-        // Create a new timer that fires every second and calls 'tick()'
+        timer?.cancel()
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
-            .sink { [weak self] _ in self?.tick() }
+            .sink { [weak self] _ in
+                self?.tick()
+            }
     }
 
-    // Called every second by the timer.
-    // Decreases remaining time, and stops the timer if time runs out.
     private func tick() {
-        if timeRemaining > 0 {
-            timeRemaining -= 1
-        } else {
-            timer?.cancel() // Time's up
+        guard timeRemaining > 0 else {
+            timer?.cancel()
+            return
+        }
+        timeRemaining -= 1
+        if timeRemaining == 0 {
+            timer?.cancel()
+            userMessage = UserMessage(message: "Round complete! Tap “New Round” when you are ready to play again.")
         }
     }
+
+    private func updateHighScoreIfNeeded(with score: Int) {
+        if score > highScore {
+            highScore = score
+            UserDefaults.standard.set(highScore, forKey: Self.highScoreKey)
+        }
+    }
+
+    private func updateFoundWordsDisplay() {
+        guard let player = activePlayer else {
+            foundWords = []
+            return
+        }
+        foundWords = sortedWords(player.words)
+    }
+
+    private func rebuildUsedWordsSet() {
+        if settings.enforceUniqueWords {
+            usedWords = Set(playerStates.flatMap { $0.words })
+        } else {
+            usedWords.removeAll()
+        }
+    }
+
+    private func minimumWordLength(for player: PlayerState) -> Int {
+        player.minimumWordLengthOverride ?? settings.minimumWordLength
+    }
+
+    private func calculateScore(for word: String) -> Int {
+        switch word.count {
+        case 0...2: return 0
+        case 3, 4: return 1
+        case 5: return 2
+        case 6: return 3
+        case 7: return 5
+        default: return 11
+        }
+    }
+
+    private func sortedWords(_ words: [String]) -> [String] {
+        words.sorted { lhs, rhs in
+            if lhs.count == rhs.count {
+                return lhs < rhs
+            }
+            return lhs.count > rhs.count
+        }
+    }
+
+    private func findPath(for word: String) -> [Position]? {
+        guard !grid.isEmpty else { return nil }
+        let dimension = grid.count
+        let target = word.lowercased()
+        for row in 0..<dimension {
+            for col in 0..<dimension {
+                var visited: Set<Position> = []
+                var path: [Position] = []
+                if search(from: Position(row: row, col: col), remaining: target[...], visited: &visited, path: &path) {
+                    return path
+                }
+            }
+        }
+        return nil
+    }
+
+    private func search(from position: Position, remaining: Substring, visited: inout Set<Position>, path: inout [Position]) -> Bool {
+        guard !visited.contains(position) else { return false }
+        let tile = grid[position.row][position.col].lowercased()
+        guard remaining.hasPrefix(tile) else { return false }
+
+        visited.insert(position)
+        path.append(position)
+
+        let leftover = remaining.dropFirst(tile.count)
+        if leftover.isEmpty {
+            return true
+        }
+
+        for neighbor in position.neighbors(in: grid.count) {
+            if search(from: neighbor, remaining: leftover, visited: &visited, path: &path) {
+                return true
+            }
+        }
+
+        visited.remove(position)
+        path.removeLast()
+        return false
+    }
+
+    private func loadDictionary() {
+        if let url = Bundle.main.url(forResource: "dictionary", withExtension: "txt"),
+           let content = try? String(contentsOf: url) {
+            dictionary = Set(content.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
+        }
+        if dictionary.isEmpty {
+            dictionary = Self.fallbackDictionary
+        }
+    }
+
+    private func saveSettings() {
+        if let data = try? JSONEncoder().encode(settings) {
+            UserDefaults.standard.set(data, forKey: Self.settingsKey)
+        }
+    }
+
+    private func savePlayerProfiles() {
+        let profiles = playerStates.map { $0.profile }
+        if let data = try? JSONEncoder().encode(profiles) {
+            UserDefaults.standard.set(data, forKey: Self.playersKey)
+        }
+    }
+
+    private static func loadSettings() -> GameSettings {
+        guard let data = UserDefaults.standard.data(forKey: settingsKey),
+              let settings = try? JSONDecoder().decode(GameSettings.self, from: data) else {
+            return defaultSettings
+        }
+        return settings
+    }
+
+    private static func loadPlayerProfiles() -> [PlayerProfile] {
+        guard let data = UserDefaults.standard.data(forKey: playersKey),
+              let profiles = try? JSONDecoder().decode([PlayerProfile].self, from: data) else {
+            return defaultPlayers
+        }
+        return profiles
+    }
+
+    private static let fallbackDictionary: Set<String> = [
+        "able", "about", "after", "again", "apple", "baker", "bloom", "board", "brain", "brave",
+        "bring", "castle", "chance", "clear", "cloud", "crane", "dream", "eagle", "earth", "flame",
+        "frame", "ghost", "globe", "grape", "honey", "house", "jelly", "knife", "light", "magic",
+        "night", "ocean", "pearl", "queen", "quick", "river", "stone", "table", "train", "water"
+    ]
 }

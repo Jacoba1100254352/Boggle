@@ -1,97 +1,230 @@
 // =============================================================
-// ContentView.swift
+// ContentView.swift – Primary game interface
 // =============================================================
 
 import SwiftUI
 
-// =============================================================
-// ContentView: The main view for the Boggle game UI.
-// Displays the game board, timer, score, word input, and more.
-// =============================================================
 struct ContentView: View {
-    // Holds the core game state and logic for the view.
-    // @StateObject tells SwiftUI to create and watch this object for changes, so the view updates when data changes.
-    // 'private' means only this struct can use 'vm'.
     @StateObject private var vm = GameViewModel()
-
-    // Stores the currently selected positions (tiles) on the Boggle board.
-    // @State is used for simple, changing values. When it changes, the view updates.
-    @State private var selected: [Position] = []		// Creates a list of Position structs initialized as an empty list
-
-    // Controls if the settings/rules sheet is shown.
-    // When set to true, a modal sheet appears.
     @State private var showingSettings = false
 
     var body: some View {
-        VStack {
-            // The main Boggle game grid. Lets the user tap/select tiles.
-            // Passes the grid state, selected tiles, and a callback for selecting.
-            BoggleGridView(grid: vm.grid, selectedLetters: $selected, onSelect: select)
+        NavigationStack {
+            ZStack {
+                LinearGradient(colors: [.indigo, .blue.opacity(0.7), .purple.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    .ignoresSafeArea()
 
-            // Shows the remaining time in MM:SS format.
-            Text("Time: \(formatTime(vm.timeRemaining))")
-                .font(.title2)
-
-            // Shows the user's current score.
-            Text("Score: \(vm.score)")
-                .font(.title2)
-
-            // Shows the highest score achieved.
-            Text("High Score: \(vm.highScore)")
-                .font(.title2)
-
-            // Input for the current word being built. Submits the word when user confirms.
-            WordInputView(word: $vm.currentWord) {
-                // When the word is submitted, send selected tiles to the view model and reset selection.
-                vm.submitWord(selectedLetters: selected)
-                selected.removeAll()
+                ScrollView {
+                    VStack(spacing: 24) {
+                        headerSection
+                        scoreboardSection
+                        BoggleGridView(grid: vm.board, highlightedPath: vm.highlightedPath)
+                        WordInputView(word: $vm.currentWord,
+                                      minimumLength: vm.activePlayerMinimumLength,
+                                      isEnabled: vm.isRoundActive) {
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
+                                vm.submitCurrentWord()
+                            }
+                        }
+                        foundWordsSection
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 32)
+                }
             }
+            .navigationTitle("Boggle Deluxe")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            vm.startGame()
+                        }
+                    } label: {
+                        Label("New Round", systemImage: "arrow.clockwise.circle.fill")
+                    }
+                }
 
-            // Displays the list of words the user has found so far.
-            List(vm.foundWords, id: \.self) { Text($0) }
-
-            // Pushes content to the top, so UI is not cramped.
-            Spacer()
-        }
-        .padding() // Adds padding around the VStack.
-        .toolbar {
-            // Adds a button in the navigation bar to show the rules/settings.
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Rules") { showingSettings = true }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Label("Settings", systemImage: "slider.horizontal.3")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingSettings) {
+                RuleSettingsView(vm: vm)
+            }
+            .alert(item: $vm.userMessage) { message in
+                Alert(title: Text(message.message))
+            }
+            .onAppear {
+                vm.ensureGameStarted()
             }
         }
-        .alert(item: $vm.userMessage) { msg in
-            // Shows an alert when vm.userMessage is set, displaying the message text.
-            Alert(title: Text(msg.message))
-        }
-        .sheet(isPresented: $showingSettings) {
-            // Shows the rules/settings screen as a modal sheet when 'showingSettings' is true.
-            RuleSettingsView(vm: vm)
-        }
-        .onAppear { vm.startGame() } // Starts a new game when the view appears.
     }
 
-    // Handles selection of a tile/position in the grid.
-    // Only allows selection if it's touching the last selected, and not already selected.
-	private func select(_ pos: Position) {
-		// If the tapped tile is the last in the list, allow unselecting it ("undo" the last move)
-		if selected.last == pos {
-			selected.removeLast()
-			vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
-			return
-		}
-		// Otherwise, only allow selection if legal
-		if let last = selected.last {
-			guard abs(last.row - pos.row) <= 1 && abs(last.col - pos.col) <= 1 else { return }
-		}
-		if !selected.contains(pos) {
-			selected.append(pos)
-			vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
-		}
-	}
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Label("Time left: \(formatTime(vm.timeRemaining))", systemImage: "timer")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white)
 
-    // Formats the time remaining as MM:SS.
-    private func formatTime(_ s: Int) -> String {
-        String(format: "%02d:%02d", s / 60, s % 60)
+                Spacer()
+
+                Label("High score: \(vm.highScore)", systemImage: "trophy.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.yellow)
+            }
+
+            ProgressView(value: Double(vm.timeRemaining), total: Double(max(vm.settings.roundLength, 1)))
+                .tint(.mint)
+                .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
+
+            HStack {
+                Label("Active player: \(vm.activePlayerName.isEmpty ? "—" : vm.activePlayerName)", systemImage: "person.fill")
+                    .foregroundStyle(.white.opacity(0.85))
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        vm.shuffleBoard()
+                    }
+                } label: {
+                    Label("Shuffle dice", systemImage: "shuffle")
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.15), in: Capsule())
+                }
+                .disabled(!vm.isRoundActive)
+                .opacity(vm.isRoundActive ? 1 : 0.5)
+            }
+        }
+        .padding(20)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 6)
+    }
+
+    private var scoreboardSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Scoreboard")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.white)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(vm.playerStates) { player in
+                        PlayerSummaryCard(player: player,
+                                           minimumLength: player.minimumWordLengthOverride ?? vm.settings.minimumWordLength,
+                                           isActive: player.id == vm.activePlayer?.id,
+                                           onSelect: { withAnimation(.easeInOut(duration: 0.25)) { vm.selectPlayer(player.id) } })
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    private var foundWordsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(vm.activePlayerName.isEmpty ? "Found words" : "\(vm.activePlayerName)'s words")
+                    .font(.title2.weight(.semibold))
+                Spacer()
+                Text("Total: \(vm.foundWords.count)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            if vm.foundWords.isEmpty {
+                Text("Play a word to see it appear here.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            } else {
+                LazyVStack(alignment: .leading, spacing: 10) {
+                    ForEach(vm.foundWords, id: \.self) { word in
+                        HStack {
+                            Text(word.uppercased())
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text("+\(vm.scoreForWord(word))")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.green)
+                        }
+                        .padding(12)
+                        .background(Color.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: .black.opacity(0.18), radius: 8, x: 0, y: 4)
+    }
+
+    private func formatTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let remaining = seconds % 60
+        return String(format: "%02d:%02d", minutes, remaining)
+    }
+}
+
+private struct PlayerSummaryCard: View {
+    let player: PlayerState
+    let minimumLength: Int
+    let isActive: Bool
+    var onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(player.profile.name)
+                        .font(.headline)
+                    Spacer()
+                    if isActive {
+                        Label("Current", systemImage: "sparkles")
+                            .font(.caption.bold())
+                            .padding(6)
+                            .background(Color.white.opacity(0.2), in: Capsule())
+                    }
+                }
+
+                Text("Score: \(player.score)")
+                    .font(.title3.bold())
+
+                Text("Words: \(player.words.count)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Text("Minimum letters: \(minimumLength)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(18)
+            .frame(width: 200, alignment: .leading)
+            .background(cardGradient)
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Color.white.opacity(isActive ? 0.6 : 0.25), lineWidth: isActive ? 3 : 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 5)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var cardGradient: LinearGradient {
+        if isActive {
+            return LinearGradient(colors: [Color.mint.opacity(0.9), Color.teal.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        } else {
+            return LinearGradient(colors: [Color.white.opacity(0.25), Color.white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
     }
 }
