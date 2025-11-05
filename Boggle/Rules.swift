@@ -5,27 +5,14 @@
 import Foundation
 
 // =============================================================
-// RuleOptions: Describes which rules are enabled in the game.
-// Uses OptionSet so you can combine multiple rule flags efficiently (bitmasking).
-// Persisted by @AppStorage so user's rule choices save between runs.
-// =============================================================
-struct RuleOptions: OptionSet {
-    let rawValue: Int
-    // Rule: Words must have a minimum length
-    static let minLength     = RuleOptions(rawValue: 1 << 0)
-    // Rule: Each word can only be played once
-    static let uniqueWords   = RuleOptions(rawValue: 1 << 1)
-    // Shortcut for all rules enabled
-    static let all: RuleOptions = [.minLength, .uniqueWords]
-}
-
-// =============================================================
 // GameContext: Supplies extra info to rules during validation.
 // Holds the current grid and all words found so far.
 // =============================================================
 struct GameContext {
-    let grid: [[Character]]
+    let grid: [[BoggleTile]]
     let previousWords: Set<String>
+    let minimumWordLength: Int
+    let activePlayer: Player?
 }
 
 // =============================================================
@@ -52,9 +39,9 @@ protocol GameRule {
 // MinLengthRule: Ensures the word is at least a certain number of letters.
 // =============================================================
 struct MinLengthRule: GameRule {
-    let minLen: Int
     func validate(word: String, path: [Position], context: GameContext) -> ValidationResult {
-        word.count >= minLen ? .success() : .failure(reason: "Word must be at least \(minLen) letters")
+        let minLen = context.minimumWordLength
+        return word.count >= minLen ? .success() : .failure(reason: "Word must be at least \(minLen) letters")
     }
 }
 
@@ -64,6 +51,39 @@ struct MinLengthRule: GameRule {
 struct UniqueWordRule: GameRule {
     func validate(word: String, path: [Position], context: GameContext) -> ValidationResult {
         context.previousWords.contains(word) ? .failure(reason: "Word already played") : .success()
+    }
+}
+
+// =============================================================
+// PathRule: Verifies the supplied path forms the requested word.
+// Ensures tiles are adjacent, unique, and match the provided grid letters.
+// =============================================================
+struct PathRule: GameRule {
+    func validate(word: String, path: [Position], context: GameContext) -> ValidationResult {
+        guard !path.isEmpty else { return .failure(reason: "Select letters from the board") }
+        guard Set(path).count == path.count else { return .failure(reason: "Tiles cannot be reused") }
+
+        var built = ""
+
+        for index in path.indices {
+            let current = path[index]
+
+            if index > 0 {
+                let previous = path[index - 1]
+                guard abs(previous.row - current.row) <= 1 && abs(previous.col - current.col) <= 1 else {
+                    return .failure(reason: "Letters must touch")
+                }
+            }
+
+            guard context.grid.indices.contains(current.row),
+                  context.grid[current.row].indices.contains(current.col) else {
+                return .failure(reason: "Invalid tile selection")
+            }
+
+            built += context.grid[current.row][current.col].value
+        }
+
+        return built == word ? .success() : .failure(reason: "Selection does not match \(word.uppercased())")
     }
 }
 

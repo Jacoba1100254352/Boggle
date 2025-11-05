@@ -10,7 +10,7 @@ import SwiftUI
 // =============================================================
 struct BoggleGridView: View {
     // The 2D grid of characters (letters) to display.
-    let grid: [[Character]]
+    let grid: [[BoggleTile]]
     // @Binding lets this view read and update the parent's list of selected positions.
     @Binding var selectedLetters: [Position]
     // 'onSelect' is a closure (function) called when a tile is tapped, passing the tapped tile's position.
@@ -28,14 +28,20 @@ struct BoggleGridView: View {
                         // Create a Position for this tile
                         let pos = Position(row: row, col: col)
                         // Show the letter in a styled square tile
-                        Text(String(grid[row][col]))
-                            .font(.largeTitle) // Big readable letter
-                            .frame(width: 60, height: 60) // Fixed tile size
-                            // Tile color: greenish if selected, blue otherwise
-                            .background(selectedLetters.contains(pos) ? .green.opacity(0.7) : .blue.opacity(0.7))
-                            .foregroundColor(.white) // White letter
-                            .cornerRadius(8) // Rounded tile corners
-                            // When tapped, call onSelect to notify parent view
+                        let tile = grid[row][col]
+                        Text(tile.text)
+                            .font(.system(size: 28, weight: .semibold))
+                            .frame(width: 64, height: 64)
+                            .background(
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(Color.blue.opacity(selectedLetters.contains(pos) ? 0.85 : 0.35))
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(selectedLetters.contains(pos) ? Color.white : Color.blue.opacity(0.6), lineWidth: 2)
+                                }
+                            )
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.18), radius: 6, x: 0, y: 3)
                             .onTapGesture { onSelect(pos) }
                     }
                 }
