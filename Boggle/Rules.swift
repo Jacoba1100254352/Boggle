@@ -24,7 +24,7 @@ struct RuleOptions: OptionSet {
 // Holds the current grid and all words found so far.
 // =============================================================
 struct GameContext {
-    let grid: [[Character]]
+    let grid: [[String]]
     let previousWords: Set<String>
 }
 
@@ -53,8 +53,15 @@ protocol GameRule {
 // =============================================================
 struct MinLengthRule: GameRule {
     let minLen: Int
+    let owner: String?
     func validate(word: String, path: [Position], context: GameContext) -> ValidationResult {
-        word.count >= minLen ? .success() : .failure(reason: "Word must be at least \(minLen) letters")
+        guard word.count >= minLen else {
+            if let owner {
+                return .failure(reason: "\(owner) must play words at least \(minLen) letters long")
+            }
+            return .failure(reason: "Word must be at least \(minLen) letters")
+        }
+        return .success()
     }
 }
 
@@ -64,6 +71,48 @@ struct MinLengthRule: GameRule {
 struct UniqueWordRule: GameRule {
     func validate(word: String, path: [Position], context: GameContext) -> ValidationResult {
         context.previousWords.contains(word) ? .failure(reason: "Word already played") : .success()
+    }
+}
+
+// =============================================================
+// PathMatchesWordRule: Verifies the submitted word follows a valid path
+// on the board and that the entered word matches the selected tiles.
+// =============================================================
+struct PathMatchesWordRule: GameRule {
+    func validate(word: String, path: [Position], context: GameContext) -> ValidationResult {
+        guard !path.isEmpty else {
+            return .failure(reason: "Select letters on the board first")
+        }
+
+        // Ensure every position is on the board.
+        for pos in path {
+            guard context.grid.indices.contains(pos.row),
+                  context.grid[pos.row].indices.contains(pos.col) else {
+                return .failure(reason: "Selection contains an invalid tile")
+            }
+        }
+
+        // Ensure no die is reused.
+        if Set(path).count != path.count {
+            return .failure(reason: "You can't reuse the same die")
+        }
+
+        // Ensure each step is adjacent (including diagonals).
+        for (first, second) in zip(path, path.dropFirst()) {
+            let dRow = abs(first.row - second.row)
+            let dCol = abs(first.col - second.col)
+            guard dRow <= 1 && dCol <= 1 else {
+                return .failure(reason: "Letters must be adjacent")
+            }
+        }
+
+        // Ensure the selected letters match the submitted word.
+        let assembled = path.map { context.grid[$0.row][$0.col].lowercased() }.joined()
+        guard assembled == word else {
+            return .failure(reason: "Selected letters don't match the word")
+        }
+
+        return .success()
     }
 }
 

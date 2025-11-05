@@ -6,91 +6,225 @@ import SwiftUI
 
 // =============================================================
 // ContentView: The main view for the Boggle game UI.
-// Displays the game board, timer, score, word input, and more.
+// Displays the game board, timer, score, and rule access.
 // =============================================================
 struct ContentView: View {
-    // Holds the core game state and logic for the view.
-    // @StateObject tells SwiftUI to create and watch this object for changes, so the view updates when data changes.
-    // 'private' means only this struct can use 'vm'.
     @StateObject private var vm = GameViewModel()
-
-    // Stores the currently selected positions (tiles) on the Boggle board.
-    // @State is used for simple, changing values. When it changes, the view updates.
-    @State private var selected: [Position] = []		// Creates a list of Position structs initialized as an empty list
-
-    // Controls if the settings/rules sheet is shown.
-    // When set to true, a modal sheet appears.
+    @State private var selected: [Position] = []
     @State private var showingSettings = false
 
     var body: some View {
-        VStack {
-            // The main Boggle game grid. Lets the user tap/select tiles.
-            // Passes the grid state, selected tiles, and a callback for selecting.
-            BoggleGridView(grid: vm.grid, selectedLetters: $selected, onSelect: select)
+        NavigationStack {
+            ZStack {
+                LinearGradient(colors: [.indigo.opacity(0.85), .purple.opacity(0.8)],
+                               startPoint: .topLeading,
+                               endPoint: .bottomTrailing)
+                    .ignoresSafeArea()
 
-            // Shows the remaining time in MM:SS format.
-            Text("Time: \(formatTime(vm.timeRemaining))")
-                .font(.title2)
+                ScrollView {
+                    VStack(spacing: 24) {
+                        header
 
-            // Shows the user's current score.
-            Text("Score: \(vm.score)")
-                .font(.title2)
+                        if vm.players.count > 1 {
+                            playerPicker
+                        }
 
-            // Shows the highest score achieved.
-            Text("High Score: \(vm.highScore)")
-                .font(.title2)
+                        BoggleGridView(grid: vm.grid, selectedLetters: $selected, onSelect: select)
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .shadow(color: .black.opacity(0.25), radius: 10, x: 0, y: 6)
 
-            // Input for the current word being built. Submits the word when user confirms.
-            WordInputView(word: $vm.currentWord) {
-                // When the word is submitted, send selected tiles to the view model and reset selection.
-                vm.submitWord(selectedLetters: selected)
-                selected.removeAll()
+                        WordInputView(word: $vm.currentWord,
+                                      isRoundActive: vm.isRoundRunning,
+                                      onClear: clearSelection,
+                                      onSubmit: submitCurrentWord,
+                                      onShuffle: shuffleBoard,
+                                      remainingTime: vm.timeRemaining,
+                                      totalTime: vm.roundDuration)
+
+                        scoreboard
+                        foundWordsSection
+                    }
+                    .padding()
+                }
             }
-
-            // Displays the list of words the user has found so far.
-            List(vm.foundWords, id: \.self) { Text($0) }
-
-            // Pushes content to the top, so UI is not cramped.
-            Spacer()
-        }
-        .padding() // Adds padding around the VStack.
-        .toolbar {
-            // Adds a button in the navigation bar to show the rules/settings.
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Rules") { showingSettings = true }
+            .navigationTitle("Boggle Deluxe")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Label("Rules", systemImage: "slider.horizontal.3")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingSettings) {
+                RuleSettingsView(vm: vm)
+                    .presentationDetents([.medium, .large])
+            }
+            .alert(item: $vm.userMessage) { message in
+                Alert(title: Text(message.message))
+            }
+            .onAppear {
+                vm.startGame()
             }
         }
-        .alert(item: $vm.userMessage) { msg in
-            // Shows an alert when vm.userMessage is set, displaying the message text.
-            Alert(title: Text(msg.message))
-        }
-        .sheet(isPresented: $showingSettings) {
-            // Shows the rules/settings screen as a modal sheet when 'showingSettings' is true.
-            RuleSettingsView(vm: vm)
-        }
-        .onAppear { vm.startGame() } // Starts a new game when the view appears.
     }
 
-    // Handles selection of a tile/position in the grid.
-    // Only allows selection if it's touching the last selected, and not already selected.
-	private func select(_ pos: Position) {
-		// If the tapped tile is the last in the list, allow unselecting it ("undo" the last move)
-		if selected.last == pos {
-			selected.removeLast()
-			vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
-			return
-		}
-		// Otherwise, only allow selection if legal
-		if let last = selected.last {
-			guard abs(last.row - pos.row) <= 1 && abs(last.col - pos.col) <= 1 else { return }
-		}
-		if !selected.contains(pos) {
-			selected.append(pos)
-			vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
-		}
-	}
+    private var header: some View {
+        VStack(spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Round Timer")
+                        .font(.headline)
+                        .foregroundColor(.white.opacity(0.8))
+                    Text(formatTime(vm.timeRemaining))
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 10) {
+                    Button(action: startNewRound) {
+                        Label("New Round", systemImage: "arrow.clockwise")
+                            .fontWeight(.semibold)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 14)
+                            .background(Color.white.opacity(0.2))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .foregroundColor(.white)
 
-    // Formats the time remaining as MM:SS.
+                    Text("High Score: \(vm.highScore)")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            }
+
+            ProgressView(value: Double(vm.timeRemaining), total: Double(vm.roundDuration))
+                .progressViewStyle(.linear)
+                .tint(.mint)
+                .scaleEffect(x: 1, y: 2, anchor: .center)
+                .background(Color.white.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 6)
+    }
+
+    private var playerPicker: some View {
+        Picker("Active Player", selection: Binding(
+            get: { vm.activePlayerID },
+            set: { vm.setActivePlayer($0) }
+        )) {
+            ForEach(vm.players) { player in
+                Text(player.name).tag(player.id)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+    }
+
+    private var scoreboard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Scoreboard")
+                .font(.title2).bold()
+                .foregroundColor(.white)
+
+            VStack(spacing: 10) {
+                ForEach(vm.players) { player in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(player.name)
+                                .font(.headline)
+                            if let minOverride = player.minimumLengthOverride {
+                                Text("Min length: \(minOverride)")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                        }
+                        Spacer()
+                        Text("\(player.score)")
+                            .font(.title3).bold()
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(player.id == vm.activePlayerID ? Color.white.opacity(0.3) : Color.white.opacity(0.15))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 6)
+    }
+
+    private var foundWordsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Words Found")
+                .font(.title3).bold()
+                .foregroundColor(.white)
+
+            if vm.foundWords.isEmpty {
+                Text("No words submitted yet. Keep searching!")
+                    .foregroundColor(.white.opacity(0.7))
+            } else {
+                let columns = [GridItem(.flexible()), GridItem(.flexible())]
+                LazyVGrid(columns: columns, spacing: 8) {
+                    ForEach(vm.foundWords, id: \.self) { word in
+                        Text(word.uppercased())
+                            .font(.headline)
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.white.opacity(0.2))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 6)
+    }
+
+    private func select(_ pos: Position) {
+        guard vm.isRoundRunning else { return }
+        if selected.last == pos {
+            selected.removeLast()
+            vm.currentWord = vm.string(for: selected)
+            return
+        }
+        if selected.contains(pos) { return }
+        if let last = selected.last {
+            guard abs(last.row - pos.row) <= 1 && abs(last.col - pos.col) <= 1 else { return }
+        }
+        selected.append(pos)
+        vm.currentWord = vm.string(for: selected)
+    }
+
+    private func clearSelection() {
+        selected.removeAll()
+        vm.clearCurrentSelection()
+    }
+
+    private func submitCurrentWord() {
+        vm.submitWord(selectedLetters: selected)
+        clearSelection()
+    }
+
+    private func shuffleBoard() {
+        vm.shuffleBoard()
+        clearSelection()
+    }
+
+    private func startNewRound() {
+        vm.startGame()
+        clearSelection()
+    }
+
     private func formatTime(_ s: Int) -> String {
         String(format: "%02d:%02d", s / 60, s % 60)
     }

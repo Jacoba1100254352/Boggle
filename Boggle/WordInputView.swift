@@ -5,32 +5,87 @@
 import SwiftUI
 
 // =============================================================
-// WordInputView: Lets the user type in a word and submit it.
-// Used as a reusable component in the main game view.
+// WordInputView: Presents the composed word, controls for clearing,
+// submitting, and shuffling the board.
 // =============================================================
 struct WordInputView: View {
-    // @Binding allows this view to read & write the 'word' variable owned by its parent.
-    // This means when the user types here, the change is reflected in the parent view too!
     @Binding var word: String
-    // 'onSubmit' is a closure (a function you pass in) called when the user taps the Submit button.
+    var isRoundActive: Bool
+    var onClear: () -> Void
     var onSubmit: () -> Void
+    var onShuffle: () -> Void
+    var remainingTime: Int
+    var totalTime: Int
+
+    private var progress: Double {
+        guard totalTime > 0 else { return 0 }
+        return Double(totalTime - remainingTime) / Double(totalTime)
+    }
 
     var body: some View {
-        // Arrange input field and button side-by-side
-        HStack {
-            // TextField lets the user type their word
-            // The text is linked ('bound') to 'word', so it updates live as the user types.
-            TextField("Enter word", text: $word)
-                .textFieldStyle(.roundedBorder) // Adds a nice border to the input
-                .padding(.horizontal)           // Adds space to left and right
-            // Submit button for entering the word
-            Button("Submit", action: onSubmit)
-                .padding(8)                      // Space inside button for easier tapping
-                .background(Color.green)         // Makes button green
-                .foregroundColor(.white)         // White text for contrast
-                .cornerRadius(6)                 // Rounded corners for modern look
-                .disabled(word.isEmpty)          // Button is disabled if text is empty
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Current Word")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.7))
+
+                Text(word.isEmpty ? "Select letters" : word.uppercased())
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .minimumScaleFactor(0.6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+                    .tint(.mint)
+                    .scaleEffect(x: 1, y: 1.5, anchor: .center)
+            }
+
+            HStack(spacing: 12) {
+                Button {
+                    onClear()
+                } label: {
+                    Label("Clear", systemImage: "arrow.uturn.backward")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(ActionButtonStyle(color: .gray.opacity(0.4)))
+                .disabled(word.isEmpty)
+
+                Button {
+                    onShuffle()
+                } label: {
+                    Label("Shuffle", systemImage: "shuffle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(ActionButtonStyle(color: .blue.opacity(0.5)))
+                .disabled(!isRoundActive)
+
+                Button {
+                    onSubmit()
+                } label: {
+                    Label("Submit", systemImage: "checkmark.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(ActionButtonStyle(color: .green.opacity(0.7)))
+                .disabled(word.isEmpty || !isRoundActive)
+            }
         }
-        .padding(.vertical)  // Adds space above and below the whole row
+        .padding()
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 6)
+    }
+}
+
+private struct ActionButtonStyle: ButtonStyle {
+    let color: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.vertical, 12)
+            .background(color.opacity(configuration.isPressed ? 0.6 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .foregroundColor(.white)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
