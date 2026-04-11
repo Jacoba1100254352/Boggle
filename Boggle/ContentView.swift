@@ -142,7 +142,7 @@ struct ContentView: View {
                     FootnoteBadge(title: "Found", value: "\(vm.foundWords.count)")
                 }
 
-                Text("Trace letters, then submit.")
+                Text("Drag or tap letters, then submit.")
                     .font(.subheadline)
                     .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
             }
@@ -313,7 +313,13 @@ struct ContentView: View {
     private func select(_ pos: Position) {
         if selected.last == pos {
             selected.removeLast()
-            vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
+            syncCurrentWord()
+            return
+        }
+
+        if selected.count >= 2, selected[selected.count - 2] == pos {
+            selected.removeLast()
+            syncCurrentWord()
             return
         }
 
@@ -323,8 +329,12 @@ struct ContentView: View {
 
         if !selected.contains(pos) {
             selected.append(pos)
-            vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
+            syncCurrentWord()
         }
+    }
+
+    private func syncCurrentWord() {
+        vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
     }
 
     private func formatTime(_ seconds: Int) -> String {

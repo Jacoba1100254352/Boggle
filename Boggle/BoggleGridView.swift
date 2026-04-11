@@ -8,6 +8,8 @@ struct BoggleGridView: View {
     let grid: [[Character]]
     @Binding var selectedLetters: [Position]
     var onSelect: (Position) -> Void
+    @State private var dragOrigin: Position?
+    @State private var lastDraggedPosition: Position?
 
     var body: some View {
         GeometryReader { proxy in
@@ -29,6 +31,13 @@ struct BoggleGridView: View {
                 )
             )
             let columns = Array(repeating: GridItem(.fixed(tileSize), spacing: spacing), count: dimension)
+            let layout = BoardLayout(
+                boardSize: proxy.size,
+                dimension: dimension,
+                tileSize: tileSize,
+                spacing: spacing,
+                padding: padding
+            )
 
             ZStack {
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -51,21 +60,31 @@ struct BoggleGridView: View {
                     ForEach(positions, id: \.self) { position in
                         let selectionIndex = selectedLetters.firstIndex(of: position)
 
-                        Button {
+                        BoggleTile(
+                            letter: String(grid[position.row][position.col]),
+                            tileSize: tileSize,
+                            selectionIndex: selectionIndex
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
                             onSelect(position)
-                        } label: {
-                            BoggleTile(
-                                letter: String(grid[position.row][position.col]),
-                                tileSize: tileSize,
-                                selectionIndex: selectionIndex
-                            )
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .padding(padding)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .contentShape(Rectangle())
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 6, coordinateSpace: .local)
+                    .onChanged { value in
+                        handleDragChange(value, layout: layout)
+                    }
+                    .onEnded { _ in
+                        dragOrigin = nil
+                        lastDraggedPosition = nil
+                    }
+            )
         }
         .frame(height: boardHeight)
     }
@@ -79,6 +98,61 @@ struct BoggleGridView: View {
         }
     }
 
+    private func handleDragChange(_ value: DragGesture.Value, layout: BoardLayout) {
+        guard let startPosition = layout.position(at: value.startLocation) else { return }
+
+        if dragOrigin == nil {
+            dragOrigin = startPosition
+            lastDraggedPosition = startPosition
+
+            if selectedLetters.last != startPosition {
+                onSelect(startPosition)
+            }
+        }
+
+        guard let currentPosition = layout.position(at: value.location) else { return }
+        guard currentPosition != lastDraggedPosition else { return }
+
+        lastDraggedPosition = currentPosition
+        onSelect(currentPosition)
+    }
+
+}
+
+private struct BoardLayout {
+    let boardSize: CGSize
+    let dimension: Int
+    let tileSize: CGFloat
+    let spacing: CGFloat
+    let padding: CGFloat
+
+    private var renderedSide: CGFloat {
+        (tileSize * CGFloat(dimension)) + (spacing * CGFloat(dimension - 1)) + (padding * 2)
+    }
+
+    private var origin: CGPoint {
+        CGPoint(
+            x: (boardSize.width - renderedSide) / 2 + padding,
+            y: (boardSize.height - renderedSide) / 2 + padding
+        )
+    }
+
+    func position(at location: CGPoint) -> Position? {
+        let localX = location.x - origin.x
+        let localY = location.y - origin.y
+
+        guard localX >= 0, localY >= 0 else { return nil }
+
+        let step = tileSize + spacing
+        let col = Int(localX / step)
+        let row = Int(localY / step)
+
+        guard row < dimension, col < dimension else { return nil }
+        guard localX.truncatingRemainder(dividingBy: step) <= tileSize else { return nil }
+        guard localY.truncatingRemainder(dividingBy: step) <= tileSize else { return nil }
+
+        return Position(row: row, col: col)
+    }
 }
 
 private struct BoggleTile: View {
