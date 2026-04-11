@@ -9,11 +9,6 @@ struct ContentView: View {
     @State private var selected: [Position] = []
     @State private var showingSettings = false
 
-    private let heroMetricColumns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
-
     private let wordColumns = [
         GridItem(.adaptive(minimum: 130), spacing: 12)
     ]
@@ -23,37 +18,19 @@ struct ContentView: View {
             backgroundLayer
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
+                VStack(spacing: 16) {
+                    topBar
+                    statusRail
                     boardPanel
-                    heroPanel
                     wordBankPanel
                 }
                 .padding(.horizontal, 18)
-                .padding(.top, 10)
+                .padding(.top, 8)
                 .padding(.bottom, 104)
             }
             .scrollDismissesKeyboard(.interactively)
         }
-        .navigationTitle("Boggle")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    vm.startGame()
-                } label: {
-                    Label("New Round", systemImage: "arrow.clockwise")
-                        .labelStyle(.titleAndIcon)
-                }
-            }
-
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showingSettings = true
-                } label: {
-                    Image(systemName: "slider.horizontal.3")
-                }
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .bottom) {
             composerBar
         }
@@ -102,158 +79,118 @@ struct ContentView: View {
         }
     }
 
-    private var heroPanel: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 14) {
-                Image("BoggleMark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 54, height: 54)
-                    .padding(8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.white.opacity(0.58))
-                    )
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Round Status")
-                        .font(.caption.weight(.semibold))
-                        .textCase(.uppercase)
-                        .foregroundStyle(Color(red: 0.15, green: 0.39, blue: 0.45))
-
-                    Text(selected.isEmpty ? "Ready to trace your first word." : "Keep tracing \(vm.currentWord.uppercased()).")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(Color.primary)
-                        .lineLimit(2)
-
-                    Text(vm.currentSettings.summaryText)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-
-                Spacer(minLength: 0)
-            }
-
-            LazyVGrid(columns: heroMetricColumns, spacing: 12) {
-                HeroMetric(title: "Time", value: formatTime(vm.timeRemaining), tint: Color(red: 0.16, green: 0.38, blue: 0.53))
-                HeroMetric(title: "Score", value: "\(vm.score)", tint: Color(red: 0.17, green: 0.52, blue: 0.39))
-                HeroMetric(title: "Found", value: "\(vm.foundWords.count)", tint: Color(red: 0.54, green: 0.36, blue: 0.18))
-                HeroMetric(title: "Best", value: "\(vm.highScore)", tint: Color(red: 0.61, green: 0.39, blue: 0.17))
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    SettingPill(label: "Board", value: vm.currentSettings.boardSize.title)
-                    SettingPill(label: "Round", value: vm.currentSettings.roundDuration.title)
-                    SettingPill(label: "Rules", value: activeRulesText)
-                }
-            }
-        }
-        .padding(20)
-        .background(heroBackground)
-    }
-
-    private var boardPanel: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Board")
-                        .font(.headline)
-
-                    Text("Tap neighboring tiles or finish the word in the composer.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+    private var topBar: some View {
+        ZStack {
+            HStack {
+                TopBarButton(systemName: "arrow.clockwise") {
+                    vm.startGame()
                 }
 
                 Spacer()
 
-                Text(vm.currentSettings.boardSize.title)
-                    .font(.caption.weight(.bold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
+                TopBarButton(systemName: "slider.horizontal.3") {
+                    showingSettings = true
+                }
+            }
+
+            HStack(spacing: 8) {
+                Image("BoggleMark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 28, height: 28)
+                    .padding(5)
                     .background(
-                        Capsule(style: .continuous)
-                            .fill(Color(red: 0.12, green: 0.30, blue: 0.39).opacity(0.10))
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.white.opacity(0.62))
                     )
-                    .foregroundStyle(Color(red: 0.13, green: 0.31, blue: 0.39))
+
+                Text("Boggle")
+                    .font(.title2.weight(.black))
+                    .foregroundStyle(Color(red: 0.09, green: 0.20, blue: 0.28))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
+            }
+        }
+        .frame(height: 48)
+    }
+
+    private var statusRail: some View {
+        HStack(spacing: 10) {
+            StatusChip(title: "Time", value: formatTime(vm.timeRemaining), tint: Color(red: 0.16, green: 0.38, blue: 0.53))
+            StatusChip(title: "Score", value: "\(vm.score)", tint: Color(red: 0.17, green: 0.52, blue: 0.39))
+            StatusChip(title: "Best", value: "\(vm.highScore)", tint: Color(red: 0.61, green: 0.39, blue: 0.17))
+        }
+    }
+
+    private var boardPanel: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .center) {
+                    Text("Board")
+                        .font(.headline)
+
+                    Spacer()
+
+                    Text(vm.currentSettings.boardSize.title)
+                        .font(.caption.weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(Color(red: 0.12, green: 0.30, blue: 0.39).opacity(0.10))
+                        )
+                        .foregroundStyle(Color(red: 0.13, green: 0.31, blue: 0.39))
+
+                    FootnoteBadge(title: "Found", value: "\(vm.foundWords.count)")
+                }
+
+                Text("Trace neighboring letters, then submit.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
 
             BoggleGridView(grid: vm.grid, selectedLetters: $selected, onSelect: select)
 
-            currentWordPanel
-
             HStack(spacing: 10) {
-                FootnoteBadge(title: "Tiles", value: "\(selected.count)")
                 FootnoteBadge(title: "Required", value: minimumWordRequirement)
+                FootnoteBadge(title: "Linked", value: "\(selected.count)")
 
                 Spacer()
-
-                if !selected.isEmpty || !vm.currentWord.isEmpty {
-                    Button {
-                        clearSelection()
-                    } label: {
-                        Text("Clear Path")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Color(red: 0.45, green: 0.19, blue: 0.18))
-                    }
-                    .buttonStyle(.plain)
-                }
             }
         }
         .padding(20)
         .background(primaryCardBackground)
     }
 
-    private var currentWordPanel: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Current Word")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Text(vm.currentWord.isEmpty ? "Start from the board" : vm.currentWord.uppercased())
-                    .font(.title3.weight(.black))
-                    .foregroundStyle(vm.currentWord.isEmpty ? Color.secondary : Color.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-
-                Text(selected.isEmpty ? "Tap a tile to begin." : "\(selected.count) tile\(selected.count == 1 ? "" : "s") linked")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            VStack(spacing: 6) {
-                Text(vm.currentWord.isEmpty ? "--" : "\(vm.currentWord.count)")
-                    .font(.title3.weight(.black))
-                    .foregroundStyle(Color(red: 0.15, green: 0.40, blue: 0.44))
-
-                Text("letters")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(width: 66, height: 66)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.84))
-            )
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white.opacity(0.62))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.white.opacity(0.6), lineWidth: 1)
-                )
-        )
-    }
-
     private var composerBar: some View {
         VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Current")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(vm.currentWord.isEmpty ? "Start tracing" : vm.currentWord.uppercased())
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(vm.currentWord.isEmpty ? Color.secondary : Color.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+
+                Spacer()
+
+                Text(vm.currentWord.isEmpty ? minimumRequirementDescription : "+\(currentWordPreviewScore) pts")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color(red: 0.15, green: 0.40, blue: 0.44))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.56))
+                    )
+            }
+
             WordInputView(
                 word: $vm.currentWord,
                 canClear: !selected.isEmpty || !vm.currentWord.isEmpty,
@@ -322,25 +259,6 @@ struct ContentView: View {
         .background(primaryCardBackground)
     }
 
-    private var heroBackground: some View {
-        RoundedRectangle(cornerRadius: 30, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.80),
-                        Color(red: 0.87, green: 0.94, blue: 0.95).opacity(0.86)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(Color.white.opacity(0.72), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.08), radius: 24, x: 0, y: 16)
-    }
-
     private var primaryCardBackground: some View {
         RoundedRectangle(cornerRadius: 30, style: .continuous)
             .fill(Color.white.opacity(0.72))
@@ -358,14 +276,28 @@ struct ContentView: View {
         return "Open"
     }
 
-    private var activeRulesText: String {
-        switch vm.currentSettings.activeRuleCount {
-        case 0:
-            return "Open play"
-        case 1:
-            return "1 enabled"
+    private var minimumRequirementDescription: String {
+        if vm.currentSettings.options.contains(.minLength) {
+            return "Minimum \(vm.currentSettings.minimumWordLength) letters."
+        }
+
+        return "No minimum length."
+    }
+
+    private var currentWordPreviewScore: Int {
+        switch vm.currentWord.count {
+        case 0...2:
+            return 0
+        case 3...4:
+            return 1
+        case 5:
+            return 2
+        case 6:
+            return 3
+        case 7:
+            return 5
         default:
-            return "\(vm.currentSettings.activeRuleCount) enabled"
+            return 11
         }
     }
 
@@ -396,54 +328,55 @@ struct ContentView: View {
     }
 }
 
-private struct HeroMetric: View {
+private struct TopBarButton: View {
+    let systemName: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(Color(red: 0.14, green: 0.39, blue: 0.45))
+                .frame(width: 46, height: 46)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.62))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.white.opacity(0.7), lineWidth: 1)
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct StatusChip: View {
     let title: String
     let value: String
     let tint: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             Text(value)
-                .font(.title3.weight(.bold))
+                .font(.headline.weight(.bold))
                 .monospacedDigit()
                 .foregroundStyle(Color.primary)
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white.opacity(0.68))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(tint.opacity(0.24), lineWidth: 1.3)
                 )
-        )
-    }
-}
-
-private struct SettingPill: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Text(value)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Color.primary)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Color.white.opacity(0.62))
         )
     }
 }

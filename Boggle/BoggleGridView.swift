@@ -74,9 +74,9 @@ struct BoggleGridView: View {
     private var boardHeight: CGFloat {
         switch grid.count {
         case 5:
-            return 420
+            return 396
         default:
-            return 350
+            return 314
         }
     }
 

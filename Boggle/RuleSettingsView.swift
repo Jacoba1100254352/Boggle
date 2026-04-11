@@ -15,6 +15,10 @@ struct RuleSettingsView: View {
         GridItem(.adaptive(minimum: 132), spacing: 12)
     ]
 
+    private let thresholdColumns = [
+        GridItem(.adaptive(minimum: 92), spacing: 10)
+    ]
+
     private let presets: [SetupPreset] = [
         SetupPreset(
             id: "classic",
@@ -229,7 +233,7 @@ struct RuleSettingsView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(minimumLengthEnabled.wrappedValue ? Color.primary : Color.secondary)
 
-                    HStack(spacing: 10) {
+                    LazyVGrid(columns: thresholdColumns, alignment: .leading, spacing: 10) {
                         ForEach(3...6, id: \.self) { length in
                             Button {
                                 settings.minimumWordLength = length
@@ -242,8 +246,8 @@ struct RuleSettingsView: View {
                                         ? Color.white
                                         : Color.primary
                                     )
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 10)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
                                     .background(
                                         Capsule(style: .continuous)
                                             .fill(
