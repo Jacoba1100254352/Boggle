@@ -26,7 +26,7 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)
-                .padding(.bottom, 104)
+                .padding(.bottom, 136)
             }
         }
         .navigationBarHidden(true)
@@ -161,11 +161,15 @@ struct ContentView: View {
     }
 
     private var composerBar: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             HStack(spacing: 12) {
                 Text(vm.currentWord.isEmpty ? "Start tracing" : vm.currentWord.uppercased())
                     .font(.footnote.weight(.bold))
-                    .foregroundStyle(vm.currentWord.isEmpty ? Color.secondary : Color.primary)
+                    .foregroundStyle(
+                        vm.currentWord.isEmpty
+                            ? Color(red: 0.40, green: 0.48, blue: 0.53)
+                            : Color(red: 0.10, green: 0.20, blue: 0.28)
+                    )
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
@@ -193,7 +197,7 @@ struct ContentView: View {
         }
         .padding(.horizontal, 18)
         .padding(.top, 10)
-        .padding(.bottom, 12)
+        .padding(.bottom, 14)
         .background(
             Rectangle()
                 .fill(Color.white)

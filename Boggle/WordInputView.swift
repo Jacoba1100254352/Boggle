@@ -11,70 +11,70 @@ struct WordInputView: View {
     var onSubmit: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Button(action: onClear) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(canClear ? Color(red: 0.42, green: 0.21, blue: 0.18) : Color(red: 0.52, green: 0.57, blue: 0.61))
-                    .frame(width: 40, height: 40)
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(canClear ? Color(red: 0.40, green: 0.23, blue: 0.19) : Color(red: 0.56, green: 0.62, blue: 0.66))
+                    .frame(width: 34, height: 34)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(canClear ? 0.96 : 0.82))
+                            .fill(canClear ? Color(red: 0.95, green: 0.91, blue: 0.88) : Color(red: 0.94, green: 0.97, blue: 0.98))
                     )
             }
             .buttonStyle(.plain)
             .disabled(!canClear)
 
             HStack(spacing: 12) {
-                Image(systemName: "character.cursor.ibeam")
-                    .foregroundStyle(Color(red: 0.15, green: 0.37, blue: 0.44))
+                Image(systemName: "pencil.line")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.20, green: 0.40, blue: 0.47))
 
                 TextField("Type word", text: $word)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color(red: 0.13, green: 0.22, blue: 0.30))
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                     .submitLabel(.go)
                     .onSubmit(onSubmit)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .layoutPriority(1)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.98))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color(red: 0.67, green: 0.78, blue: 0.84).opacity(0.55), lineWidth: 1)
-                    )
-            )
+            .padding(.leading, 14)
+            .padding(.trailing, 8)
+            .frame(maxWidth: .infinity)
 
             Button(action: onSubmit) {
-                HStack(spacing: 6) {
-                    Text("Go")
-                        .font(.subheadline.weight(.bold))
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.subheadline.weight(.bold))
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .frame(minWidth: 48)
-                .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.19, green: 0.52, blue: 0.39),
-                                    Color(red: 0.12, green: 0.35, blue: 0.32)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 15, weight: .black))
+                    .frame(width: 42, height: 42)
+                    .background(
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.19, green: 0.52, blue: 0.39),
+                                        Color(red: 0.12, green: 0.35, blue: 0.32)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                )
-                .foregroundStyle(Color.white)
+                    )
             }
             .buttonStyle(.plain)
+            .foregroundStyle(Color.white)
             .disabled(word.isEmpty)
-            .opacity(word.isEmpty ? 0.65 : 1)
+            .opacity(word.isEmpty ? 0.5 : 1)
         }
+        .padding(.horizontal, 12)
+        .frame(height: 58)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white.opacity(0.98))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color(red: 0.67, green: 0.78, blue: 0.84).opacity(0.60), lineWidth: 1)
+                )
+        )
+        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
     }
 }
