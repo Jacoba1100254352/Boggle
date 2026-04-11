@@ -4,43 +4,160 @@
 
 import SwiftUI
 
-// =============================================================
-// BoggleGridView: Displays the Boggle game board as a grid of letters.
-// Shows which tiles are selected, and lets the user tap to select tiles.
-// =============================================================
 struct BoggleGridView: View {
-    // The 2D grid of characters (letters) to display.
     let grid: [[Character]]
-    // @Binding lets this view read and update the parent's list of selected positions.
     @Binding var selectedLetters: [Position]
-    // 'onSelect' is a closure (function) called when a tile is tapped, passing the tapped tile's position.
     var onSelect: (Position) -> Void
 
     var body: some View {
-        // Outer VStack: lays out the rows vertically
-        VStack(spacing: 5) {
-            // For each row in the grid...
-            ForEach(grid.indices, id: \.self) { row in
-                // HStack: lays out the tiles in this row horizontally
-                HStack(spacing: 5) {
-                    // For each column (tile) in this row...
-                    ForEach(grid[row].indices, id: \.self) { col in
-                        // Create a Position for this tile
-                        let pos = Position(row: row, col: col)
-                        // Show the letter in a styled square tile
-                        Text(String(grid[row][col]))
-                            .font(.largeTitle) // Big readable letter
-                            .frame(width: 60, height: 60) // Fixed tile size
-                            // Tile color: greenish if selected, blue otherwise
-                            .background(selectedLetters.contains(pos) ? .green.opacity(0.7) : .blue.opacity(0.7))
-                            .foregroundColor(.white) // White letter
-                            .cornerRadius(8) // Rounded tile corners
-                            // When tapped, call onSelect to notify parent view
-                            .onTapGesture { onSelect(pos) }
+        GeometryReader { proxy in
+            let dimension = max(grid.count, 1)
+            let positions = grid.indices.flatMap { row in
+                grid[row].indices.map { Position(row: row, col: $0) }
+            }
+            let spacing: CGFloat = dimension == 5 ? 8 : 10
+            let padding: CGFloat = dimension == 5 ? 18 : 20
+            let tileSize = max(
+                46,
+                min(
+                    84,
+                    (
+                        proxy.size.width
+                        - (padding * 2)
+                        - (CGFloat(dimension - 1) * spacing)
+                    ) / CGFloat(dimension)
+                )
+            )
+            let columns = Array(repeating: GridItem(.fixed(tileSize), spacing: spacing), count: dimension)
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.16, green: 0.34, blue: 0.42).opacity(0.12),
+                                Color.white.opacity(0.62)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .stroke(Color.white.opacity(0.72), lineWidth: 1.2)
+                    )
+
+                LazyVGrid(columns: columns, spacing: spacing) {
+                    ForEach(positions, id: \.self) { position in
+                        let selectionIndex = selectedLetters.firstIndex(of: position)
+
+                        Button {
+                            onSelect(position)
+                        } label: {
+                            BoggleTile(
+                                letter: String(grid[position.row][position.col]),
+                                tileSize: tileSize,
+                                selectionIndex: selectionIndex,
+                                angle: tileAngle(forRow: position.row, col: position.col)
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding(padding)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+        .frame(height: boardHeight)
+    }
+
+    private var boardHeight: CGFloat {
+        switch grid.count {
+        case 5:
+            return 420
+        default:
+            return 350
+        }
+    }
+
+    private func tileAngle(forRow row: Int, col: Int) -> Double {
+        Double(((row * 3) + (col * 5)) % 5 - 2)
+    }
+}
+
+private struct BoggleTile: View {
+    let letter: String
+    let tileSize: CGFloat
+    let selectionIndex: Int?
+    let angle: Double
+
+    private var isSelected: Bool {
+        selectionIndex != nil
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: isSelected
+                            ? [
+                                Color(red: 0.19, green: 0.57, blue: 0.50),
+                                Color(red: 0.11, green: 0.33, blue: 0.38)
+                            ]
+                            : [
+                                Color.white.opacity(0.98),
+                                Color(red: 0.83, green: 0.90, blue: 0.95)
+                            ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(
+                            isSelected
+                                ? Color.white.opacity(0.76)
+                                : Color(red: 0.28, green: 0.42, blue: 0.52).opacity(0.14),
+                            lineWidth: isSelected ? 2 : 1
+                        )
+                )
+
+            VStack(spacing: 6) {
+                Spacer(minLength: 0)
+
+                Text(letter)
+                    .font(.system(size: tileSize * 0.44, weight: .black, design: .rounded))
+                    .foregroundStyle(isSelected ? Color.white : Color(red: 0.12, green: 0.22, blue: 0.30))
+
+                Capsule(style: .continuous)
+                    .fill((isSelected ? Color.white : Color(red: 0.19, green: 0.40, blue: 0.47)).opacity(isSelected ? 0.28 : 0.10))
+                    .frame(width: tileSize * 0.34, height: 5)
+                    .padding(.bottom, tileSize * 0.10)
+            }
+
+            if let selectionIndex {
+                Text("\(selectionIndex + 1)")
+                    .font(.caption2.weight(.black))
+                    .foregroundStyle(Color(red: 0.09, green: 0.28, blue: 0.33))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.92))
+                    )
+                    .padding(8)
             }
         }
-        .padding() // Adds space around the grid
+        .frame(width: tileSize, height: tileSize)
+        .rotationEffect(.degrees(angle))
+        .shadow(
+            color: Color.black.opacity(isSelected ? 0.20 : 0.08),
+            radius: isSelected ? 16 : 10,
+            x: 0,
+            y: isSelected ? 12 : 8
+        )
+        .scaleEffect(isSelected ? 1.03 : 1)
+        .animation(.spring(response: 0.26, dampingFraction: 0.72), value: isSelected)
     }
 }

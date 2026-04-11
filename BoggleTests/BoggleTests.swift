@@ -2,35 +2,94 @@
 //  BoggleTests.swift
 //  BoggleTests
 //
-//  Created by Jacob Anderson on 11/3/23.
-//
 
 import XCTest
 @testable import Boggle
 
 final class BoggleTests: XCTestCase {
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-    }
+    func testMinLengthRuleUsesConfiguredLength() {
+        let rule = MinLengthRule(minLen: 4)
+        let context = GameContext(grid: [], previousWords: [])
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
+        let result = rule.validate(word: "cat", path: [], context: context)
 
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
-    }
-
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
+        switch result {
+        case .failure(let reason):
+            XCTAssertEqual(reason, "Word must be at least 4 letters")
+        default:
+            XCTFail("Expected the rule to reject short words.")
         }
     }
 
+    func testGameSettingsSummaryReflectsEnabledRules() {
+        let settings = GameSettings(
+            options: [.uniqueWords],
+            minimumWordLength: 5,
+            boardSize: .five,
+            roundDuration: .sevenMinutes
+        )
+
+        XCTAssertEqual(
+            settings.summaryText,
+            "5x5 board / 7 min / No minimum length / Unique words only"
+        )
+    }
+
+    @MainActor
+    func testApplyingSettingsStartsConfiguredRound() {
+        let vm = GameViewModel()
+        let settings = GameSettings(
+            options: .standard,
+            minimumWordLength: 4,
+            boardSize: .five,
+            roundDuration: .fiveMinutes
+        )
+
+        vm.applySettings(settings)
+
+        XCTAssertEqual(vm.currentSettings, settings)
+        XCTAssertEqual(vm.grid.count, 5)
+        XCTAssertEqual(vm.grid.first?.count, 5)
+        XCTAssertEqual(vm.timeRemaining, 300)
+    }
+
+    @MainActor
+    func testInjectedDictionaryAllowsValidWordScoring() {
+        let vm = GameViewModel(dictionary: ["ant"])
+        let settings = GameSettings(
+            options: .standard,
+            minimumWordLength: 3,
+            boardSize: .four,
+            roundDuration: .threeMinutes
+        )
+
+        vm.applySettings(settings)
+
+        vm.currentWord = "ANT"
+        vm.submitWord(selectedLetters: [])
+
+        XCTAssertEqual(vm.foundWords, ["ant"])
+        XCTAssertEqual(vm.score, 1)
+        XCTAssertNil(vm.userMessage)
+    }
+
+    @MainActor
+    func testShortWordsScoreZeroWhenMinimumLengthRuleIsDisabled() {
+        let vm = GameViewModel(dictionary: ["an"])
+        let settings = GameSettings(
+            options: [],
+            minimumWordLength: 3,
+            boardSize: .four,
+            roundDuration: .threeMinutes
+        )
+
+        vm.applySettings(settings)
+        vm.currentWord = "AN"
+        vm.submitWord(selectedLetters: [])
+
+        XCTAssertEqual(vm.foundWords, ["an"])
+        XCTAssertEqual(vm.score, 0)
+        XCTAssertNil(vm.userMessage)
+    }
 }
