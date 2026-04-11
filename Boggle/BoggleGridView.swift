@@ -35,8 +35,8 @@ struct BoggleGridView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(red: 0.16, green: 0.34, blue: 0.42).opacity(0.12),
-                                Color.white.opacity(0.62)
+                                Color(red: 0.18, green: 0.37, blue: 0.44).opacity(0.14),
+                                Color.white.opacity(0.82)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -101,8 +101,8 @@ private struct BoggleTile: View {
                                 Color(red: 0.11, green: 0.33, blue: 0.38)
                             ]
                             : [
-                                Color.white.opacity(0.98),
-                                Color(red: 0.83, green: 0.90, blue: 0.95)
+                                Color.white,
+                                Color(red: 0.85, green: 0.91, blue: 0.96)
                             ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing

@@ -15,11 +15,11 @@ struct WordInputView: View {
             Button(action: onClear) {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(canClear ? Color(red: 0.42, green: 0.21, blue: 0.18) : Color.secondary.opacity(0.45))
+                    .foregroundStyle(canClear ? Color(red: 0.42, green: 0.21, blue: 0.18) : Color(red: 0.52, green: 0.57, blue: 0.61))
                     .frame(width: 40, height: 40)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(canClear ? 0.94 : 0.72))
+                            .fill(Color.white.opacity(canClear ? 0.96 : 0.82))
                     )
             }
             .buttonStyle(.plain)
@@ -40,10 +40,10 @@ struct WordInputView: View {
             .layoutPriority(1)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.88))
+                    .fill(Color.white.opacity(0.98))
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color.white.opacity(0.78), lineWidth: 1)
+                            .stroke(Color(red: 0.67, green: 0.78, blue: 0.84).opacity(0.55), lineWidth: 1)
                     )
             )
 
@@ -74,7 +74,7 @@ struct WordInputView: View {
             }
             .buttonStyle(.plain)
             .disabled(word.isEmpty)
-            .opacity(word.isEmpty ? 0.5 : 1)
+            .opacity(word.isEmpty ? 0.65 : 1)
         }
     }
 }

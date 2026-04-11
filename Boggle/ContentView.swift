@@ -54,9 +54,9 @@ struct ContentView: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.95, green: 0.98, blue: 0.97),
-                    Color(red: 0.78, green: 0.89, blue: 0.90),
-                    Color(red: 0.67, green: 0.78, blue: 0.90)
+                    Color(red: 0.96, green: 0.98, blue: 0.98),
+                    Color(red: 0.78, green: 0.88, blue: 0.92),
+                    Color(red: 0.62, green: 0.76, blue: 0.89)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -104,7 +104,7 @@ struct ContentView: View {
 
                 Text("Boggle")
                     .font(.title3.weight(.black))
-                    .foregroundStyle(Color(red: 0.09, green: 0.20, blue: 0.28))
+                    .foregroundStyle(Color(red: 0.06, green: 0.16, blue: 0.24))
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
             }
@@ -144,7 +144,7 @@ struct ContentView: View {
 
                 Text("Trace letters, then submit.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
             }
 
             BoggleGridView(grid: vm.grid, selectedLetters: $selected, onSelect: select)
@@ -173,12 +173,12 @@ struct ContentView: View {
 
                 Text(vm.currentWord.isEmpty ? minimumRequirementBadgeText : "+\(currentWordPreviewScore) pts")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color(red: 0.15, green: 0.40, blue: 0.44))
+                    .foregroundStyle(Color(red: 0.11, green: 0.35, blue: 0.39))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
                     .background(
                         Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.56))
+                            .fill(Color.white.opacity(0.88))
                     )
             }
 
@@ -196,13 +196,14 @@ struct ContentView: View {
         .padding(.bottom, 12)
         .background(
             Rectangle()
-                .fill(.ultraThinMaterial)
+                .fill(Color.white)
                 .overlay(alignment: .top) {
                     Rectangle()
-                        .fill(Color.white.opacity(0.65))
+                        .fill(Color(red: 0.69, green: 0.81, blue: 0.87).opacity(0.55))
                         .frame(height: 1)
                 }
         )
+        .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: -4)
     }
 
     private var wordBankPanel: some View {
@@ -214,7 +215,7 @@ struct ContentView: View {
 
                     Text("Everything you lock in this round lives here.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
                 }
 
                 Spacer()
@@ -230,7 +231,7 @@ struct ContentView: View {
                         .font(.headline)
                     Text("Build one from the board or type it into the composer below to start your streak.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
                 }
                 .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -252,12 +253,12 @@ struct ContentView: View {
 
     private var primaryCardBackground: some View {
         RoundedRectangle(cornerRadius: 30, style: .continuous)
-            .fill(Color.white.opacity(0.72))
+            .fill(Color.white.opacity(0.88))
             .overlay(
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(Color.white.opacity(0.62), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.9), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.08), radius: 24, x: 0, y: 16)
+            .shadow(color: Color.black.opacity(0.10), radius: 24, x: 0, y: 16)
     }
 
     private var minimumWordRequirement: String {
@@ -335,14 +336,14 @@ private struct TopBarButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color(red: 0.14, green: 0.39, blue: 0.45))
+                .foregroundStyle(Color(red: 0.10, green: 0.31, blue: 0.39))
                 .frame(width: 42, height: 42)
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(0.62))
+                        .fill(Color.white.opacity(0.84))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color.white.opacity(0.7), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.95), lineWidth: 1)
                         )
                 )
         }
@@ -359,22 +360,22 @@ private struct StatusChip: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color(red: 0.39, green: 0.46, blue: 0.52))
 
             Text(value)
                 .font(.title3.weight(.bold))
                 .monospacedDigit()
-                .foregroundStyle(Color.primary)
+                .foregroundStyle(Color(red: 0.10, green: 0.16, blue: 0.22))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.68))
+                .fill(Color.white.opacity(0.90))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(tint.opacity(0.24), lineWidth: 1.3)
+                        .stroke(tint.opacity(0.22), lineWidth: 1.2)
                 )
         )
     }
@@ -388,17 +389,17 @@ private struct FootnoteBadge: View {
         HStack(spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color(red: 0.39, green: 0.46, blue: 0.52))
 
             Text(value)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(Color.primary)
+                .foregroundStyle(Color(red: 0.10, green: 0.16, blue: 0.22))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(
             Capsule(style: .continuous)
-                .fill(Color.white.opacity(0.56))
+                .fill(Color.white.opacity(0.84))
         )
     }
 }
@@ -418,7 +419,7 @@ private struct WordBankCard: View {
 
                 Text("\(word.count)")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(red: 0.39, green: 0.46, blue: 0.52))
             }
 
             Text(word.uppercased())
@@ -431,10 +432,10 @@ private struct WordBankCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.60))
+                .fill(Color.white.opacity(0.85))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.55), lineWidth: 1)
+                        .stroke(Color.white.opacity(0.92), lineWidth: 1)
                 )
         )
     }
