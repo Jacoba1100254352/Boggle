@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F31C0B182EF755C9006D37BA /* BoardWordFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F31C0B172EF755C9006D37BA /* BoardWordFinder.swift */; };
 		F40A59A72E1FB30200A8D0F1 /* dictionary.txt in Resources */ = {isa = PBXBuildFile; fileRef = F40A59A62E1FB30200A8D0F1 /* dictionary.txt */; };
 		F42588722E11BA9100333C40 /* Rules.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42588712E11BA9100333C40 /* Rules.swift */; };
 		F42588742E11BB0100333C40 /* RuleSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42588732E11BB0100333C40 /* RuleSettingsView.swift */; };
@@ -42,6 +43,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F31C0B172EF755C9006D37BA /* BoardWordFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardWordFinder.swift; sourceTree = "<group>"; };
 		F40A59A62E1FB30200A8D0F1 /* dictionary.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = dictionary.txt; sourceTree = "<group>"; };
 		F42588712E11BA9100333C40 /* Rules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rules.swift; sourceTree = "<group>"; };
 		F42588732E11BB0100333C40 /* RuleSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleSettingsView.swift; sourceTree = "<group>"; };
@@ -110,6 +112,7 @@
 		F44913B92AF59536001BBA2D /* Boggle */ = {
 			isa = PBXGroup;
 			children = (
+				F31C0B172EF755C9006D37BA /* BoardWordFinder.swift */,
 				F44DF3D82CB33C9400987082 /* Position.swift */,
 				F44DF3D62CB33C4000987082 /* GameViewModel.swift */,
 				F44DF3D42CB33C2A00987082 /* WordInputView.swift */,
@@ -275,6 +278,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F31C0B182EF755C9006D37BA /* BoardWordFinder.swift in Sources */,
 				F44DF3D12CB33BE700987082 /* BoggleGridView.swift in Sources */,
 				F42588742E11BB0100333C40 /* RuleSettingsView.swift in Sources */,
 				F44DF3D32CB33C1800987082 /* ContentView.swift in Sources */,

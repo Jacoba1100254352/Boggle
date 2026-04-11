@@ -33,10 +33,15 @@ struct UserMessage: Identifiable, Equatable {
     @Published var highScore = 0
     // Holds a message to present to the user, e.g., invalid word, end of game, etc.
     @Published var userMessage: UserMessage? = nil
+    // A precomputed list of every playable word on the current board.
+    @Published private(set) var availableWords: [BoardWordMatch] = []
+    @Published private(set) var isSearchingAvailableWords = false
 
     // MARK: - Private helpers (not exposed to the view)
     // Used to manage the repeating timer for countdown.
     private var timer: AnyCancellable?
+    private var solutionTask: Task<Void, Never>?
+    private var solutionGeneration = UUID()
     // The set of valid words loaded from a dictionary file.
     private var dictionary = Set<String>()
     // Handles rule enforcement for word validity.
@@ -74,11 +79,17 @@ struct UserMessage: Identifiable, Equatable {
 
     deinit {
         timer?.cancel()
+        solutionTask?.cancel()
     }
 
     // MARK: - Game control (main game logic)
     // Starts a new game: creates a new grid, resets word/score/timer, and starts the countdown.
-    func startGame() { generateGrid(); resetGame(); startTimer() }
+    func startGame() {
+        generateGrid()
+        resetGame()
+        prepareBoardReview()
+        startTimer()
+    }
 
     // Resets the round state: clears found words, resets score, resets time, empties current word.
     func resetGame() {
@@ -86,6 +97,8 @@ struct UserMessage: Identifiable, Equatable {
         score = 0
         currentWord = ""
         timeRemaining = currentSettings.roundDuration.seconds
+        availableWords.removeAll()
+        isSearchingAvailableWords = false
     }
 
     // Called when the user tries to submit a word.
@@ -99,7 +112,7 @@ struct UserMessage: Identifiable, Equatable {
             // If custom rules pass, check if it's a real word in our dictionary
             guard dictionary.contains(word) else { userMessage = UserMessage(message: "Not in dictionary"); return }
             foundWords.append(word) // Save the new word
-            score += bonus + calculateScore(for: word) // Add points for this word
+            score += bonus + Self.score(for: word) // Add points for this word
             // Update high score if needed
             if score > highScore { highScore = score; UserDefaults.standard.set(highScore, forKey: "HighScore") }
         case .failure(let why):
@@ -163,8 +176,8 @@ struct UserMessage: Identifiable, Equatable {
     }
 
     // Calculates how many points a word earns (longer words score more).
-    private func calculateScore(for w: String) -> Int {
-        switch w.count {
+    nonisolated static func score(for word: String) -> Int {
+        switch word.count {
         case 0...2:
             return 0
         case 3...4:
@@ -193,10 +206,43 @@ struct UserMessage: Identifiable, Equatable {
     // Called every second by the timer.
     // Decreases remaining time, and stops the timer if time runs out.
     private func tick() {
-        if timeRemaining > 0 {
-            timeRemaining -= 1
-        } else {
-            timer?.cancel() // Time's up
+        guard timeRemaining > 0 else {
+            timer?.cancel()
+            return
+        }
+
+        timeRemaining -= 1
+
+        if timeRemaining == 0 {
+            currentWord = ""
+            timer?.cancel()
+        }
+    }
+
+    var isRoundOver: Bool {
+        timeRemaining == 0
+    }
+
+    private func prepareBoardReview() {
+        solutionTask?.cancel()
+        availableWords = []
+        isSearchingAvailableWords = true
+
+        let grid = self.grid
+        let dictionary = self.dictionary
+        let minimumLength = currentSettings.options.contains(.minLength) ? currentSettings.minimumWordLength : 1
+        let generation = UUID()
+        solutionGeneration = generation
+
+        solutionTask = Task.detached(priority: .utility) { [weak self, grid, dictionary] in
+            let matches = BoardWordFinder.findWords(in: grid, dictionary: dictionary, minimumLength: minimumLength)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard let self, self.solutionGeneration == generation else { return }
+                self.availableWords = matches
+                self.isSearchingAvailableWords = false
+            }
         }
     }
 }

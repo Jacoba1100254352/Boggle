@@ -8,6 +8,7 @@ struct ContentView: View {
     @StateObject private var vm = GameViewModel()
     @State private var selected: [Position] = []
     @State private var showingSettings = false
+    @State private var selectedSolution: BoardWordMatch?
 
     private let wordColumns = [
         GridItem(.adaptive(minimum: 130), spacing: 12)
@@ -22,7 +23,11 @@ struct ContentView: View {
                     topBar
                     statusRail
                     boardPanel
-                    wordBankPanel
+                    if vm.isRoundOver {
+                        roundReviewPanel
+                    } else {
+                        wordBankPanel
+                    }
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)
@@ -31,13 +36,24 @@ struct ContentView: View {
         }
         .navigationBarHidden(true)
         .safeAreaInset(edge: .bottom) {
-            composerBar
+            if vm.isRoundOver {
+                roundOverBar
+            } else {
+                composerBar
+            }
         }
         .alert(item: $vm.userMessage) { msg in
             Alert(title: Text(msg.message))
         }
         .sheet(isPresented: $showingSettings) {
             RuleSettingsView(vm: vm)
+        }
+        .sheet(item: $selectedSolution) { match in
+            WordPathPreviewSheet(
+                grid: vm.grid,
+                match: match,
+                isFound: foundWordSet.contains(match.word)
+            )
         }
         .onAppear {
             if vm.grid.isEmpty {
@@ -46,7 +62,13 @@ struct ContentView: View {
         }
         .onChange(of: vm.grid) { _ in
             selected.removeAll()
+            selectedSolution = nil
             vm.currentWord = ""
+        }
+        .onChange(of: vm.timeRemaining) { newValue in
+            if newValue == 0 {
+                clearSelection()
+            }
         }
     }
 
@@ -142,16 +164,21 @@ struct ContentView: View {
                     FootnoteBadge(title: "Found", value: "\(vm.foundWords.count)")
                 }
 
-                Text("Drag or tap letters, then submit.")
+                Text(vm.isRoundOver ? "Round over. Review every playable word below." : "Drag or tap letters, then submit.")
                     .font(.subheadline)
                     .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
             }
 
-            BoggleGridView(grid: vm.grid, selectedLetters: $selected, onSelect: select)
+            BoggleGridView(grid: vm.grid, selectedLetters: $selected, isInteractive: !vm.isRoundOver, onSelect: select)
 
             HStack(spacing: 10) {
                 FootnoteBadge(title: "Required", value: minimumWordRequirement)
-                FootnoteBadge(title: "Linked", value: "\(selected.count)")
+                FootnoteBadge(
+                    title: vm.isRoundOver ? "Available" : "Linked",
+                    value: vm.isRoundOver
+                        ? (vm.isSearchingAvailableWords ? "..." : "\(vm.availableWords.count)")
+                        : "\(selected.count)"
+                )
 
                 Spacer()
             }
@@ -210,6 +237,67 @@ struct ContentView: View {
         .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: -4)
     }
 
+    private var roundOverBar: some View {
+        VStack(spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Round over")
+                        .font(.headline)
+                        .foregroundStyle(Color(red: 0.09, green: 0.19, blue: 0.28))
+
+                    Text(vm.isSearchingAvailableWords ? "Analyzing the board..." : "Tap any available word to preview its path.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                Button("New Round") {
+                    vm.startGame()
+                }
+                .buttonStyle(.plain)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.19, green: 0.52, blue: 0.39),
+                                    Color(red: 0.12, green: 0.35, blue: 0.32)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+            }
+
+            HStack(spacing: 10) {
+                FootnoteBadge(title: "Found", value: "\(vm.foundWords.count)")
+                FootnoteBadge(title: "Available", value: vm.isSearchingAvailableWords ? "..." : "\(vm.availableWords.count)")
+                FootnoteBadge(title: "Coverage", value: solutionCoverage)
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 12)
+        .padding(.bottom, 16)
+        .background(
+            Rectangle()
+                .fill(Color.white)
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(Color(red: 0.69, green: 0.81, blue: 0.87).opacity(0.55))
+                        .frame(height: 1)
+                }
+        )
+        .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: -4)
+    }
+
     private var wordBankPanel: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -255,6 +343,80 @@ struct ContentView: View {
         .background(primaryCardBackground)
     }
 
+    private var roundReviewPanel: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Round Review")
+                        .font(.headline)
+
+                    Text(vm.isSearchingAvailableWords ? "Building the full solution list for this board." : "Tap a word to see the path that spells it on the board.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
+                }
+
+                Spacer()
+
+                Text(vm.isSearchingAvailableWords ? "..." : "\(vm.availableWords.count)")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color(red: 0.12, green: 0.34, blue: 0.42))
+            }
+
+            HStack(spacing: 10) {
+                FootnoteBadge(title: "Found", value: "\(vm.foundWords.count)")
+                FootnoteBadge(title: "Missed", value: "\(missedWords.count)")
+                FootnoteBadge(title: "Coverage", value: solutionCoverage)
+            }
+
+            if vm.isSearchingAvailableWords {
+                HStack(spacing: 12) {
+                    ProgressView()
+                        .tint(Color(red: 0.15, green: 0.39, blue: 0.45))
+
+                    Text("Searching the board for every playable word.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(Color.white.opacity(0.55))
+                )
+            } else if vm.availableWords.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("No playable words found")
+                        .font(.headline)
+                    Text("This board did not produce any dictionary matches under the active rules.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(Color.white.opacity(0.55))
+                )
+            } else {
+                LazyVStack(spacing: 12) {
+                    ForEach(vm.availableWords) { match in
+                        Button {
+                            selectedSolution = match
+                        } label: {
+                            SolutionWordRow(
+                                match: match,
+                                isFound: foundWordSet.contains(match.word)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .background(primaryCardBackground)
+    }
+
     private var primaryCardBackground: some View {
         RoundedRectangle(cornerRadius: 30, style: .continuous)
             .fill(Color.white.opacity(0.88))
@@ -288,21 +450,22 @@ struct ContentView: View {
         return "No minimum"
     }
 
+    private var foundWordSet: Set<String> {
+        Set(vm.foundWords)
+    }
+
+    private var missedWords: [BoardWordMatch] {
+        vm.availableWords.filter { !foundWordSet.contains($0.word) }
+    }
+
+    private var solutionCoverage: String {
+        guard !vm.availableWords.isEmpty else { return "0%" }
+        let ratio = Double(foundWordSet.count) / Double(vm.availableWords.count)
+        return "\(Int((ratio * 100).rounded()))%"
+    }
+
     private var currentWordPreviewScore: Int {
-        switch vm.currentWord.count {
-        case 0...2:
-            return 0
-        case 3...4:
-            return 1
-        case 5:
-            return 2
-        case 6:
-            return 3
-        case 7:
-            return 5
-        default:
-            return 11
-        }
+        GameViewModel.score(for: vm.currentWord)
     }
 
     private func clearSelection() {
@@ -311,6 +474,8 @@ struct ContentView: View {
     }
 
     private func select(_ pos: Position) {
+        guard !vm.isRoundOver else { return }
+
         if selected.last == pos {
             selected.removeLast()
             syncCurrentWord()
@@ -452,5 +617,219 @@ private struct WordBankCard: View {
                         .stroke(Color.white.opacity(0.92), lineWidth: 1)
                 )
         )
+    }
+}
+
+private struct SolutionWordRow: View {
+    let match: BoardWordMatch
+    let isFound: Bool
+
+    var body: some View {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(match.word.uppercased())
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(Color(red: 0.09, green: 0.18, blue: 0.26))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+
+                    if isFound {
+                        Text("FOUND")
+                            .font(.caption2.weight(.black))
+                            .foregroundStyle(Color(red: 0.12, green: 0.35, blue: 0.32))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(Color(red: 0.88, green: 0.96, blue: 0.92))
+                            )
+                    }
+                }
+
+                Text("\(match.word.count) letters • \(GameViewModel.score(for: match.word)) pts")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color(red: 0.39, green: 0.46, blue: 0.52))
+            }
+
+            Spacer()
+
+            Image(systemName: "arrow.up.right")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Color(red: 0.28, green: 0.44, blue: 0.50))
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.84))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(
+                            isFound
+                                ? Color(red: 0.25, green: 0.63, blue: 0.48).opacity(0.24)
+                                : Color.white.opacity(0.92),
+                            lineWidth: 1
+                        )
+                )
+        )
+    }
+}
+
+private struct WordPathPreviewSheet: View {
+    let grid: [[Character]]
+    let match: BoardWordMatch
+    let isFound: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 10) {
+                            Text(match.word.uppercased())
+                                .font(.largeTitle.weight(.black))
+                                .foregroundStyle(Color(red: 0.08, green: 0.17, blue: 0.25))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+
+                            if isFound {
+                                Text("FOUND")
+                                    .font(.caption.weight(.black))
+                                    .foregroundStyle(Color(red: 0.12, green: 0.35, blue: 0.32))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule(style: .continuous)
+                                            .fill(Color(red: 0.88, green: 0.96, blue: 0.92))
+                                    )
+                            }
+                        }
+
+                        Text("Highlighted in play order on the round board.")
+                            .font(.subheadline)
+                            .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
+
+                        HStack(spacing: 10) {
+                            FootnoteBadge(title: "Letters", value: "\(match.word.count)")
+                            FootnoteBadge(title: "Score", value: "\(GameViewModel.score(for: match.word))")
+                            FootnoteBadge(title: "Path", value: "\(match.path.count)")
+                        }
+                    }
+
+                    WordPathBoardPreview(grid: grid, path: match.path)
+                }
+                .padding(20)
+            }
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.96, green: 0.98, blue: 0.98),
+                        Color(red: 0.83, green: 0.90, blue: 0.94)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+            )
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(.body.weight(.bold))
+                }
+            }
+        }
+        .navigationViewStyle(.stack)
+    }
+}
+
+private struct WordPathBoardPreview: View {
+    let grid: [[Character]]
+    let path: [Position]
+
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: grid.count == 5 ? 8 : 10), count: max(grid.count, 1))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Board path")
+                .font(.headline)
+                .foregroundStyle(Color(red: 0.09, green: 0.18, blue: 0.26))
+
+            LazyVGrid(columns: columns, spacing: grid.count == 5 ? 8 : 10) {
+                ForEach(grid.indices.flatMap { row in
+                    grid[row].indices.map { Position(row: row, col: $0) }
+                }, id: \.self) { position in
+                    let selectionIndex = path.firstIndex(of: position)
+
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: selectionIndex == nil
+                                        ? [
+                                            Color.white,
+                                            Color(red: 0.86, green: 0.92, blue: 0.96)
+                                        ]
+                                        : [
+                                            Color(red: 0.19, green: 0.57, blue: 0.50),
+                                            Color(red: 0.11, green: 0.33, blue: 0.38)
+                                        ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(
+                                        selectionIndex == nil
+                                            ? Color(red: 0.28, green: 0.42, blue: 0.52).opacity(0.14)
+                                            : Color.white.opacity(0.78),
+                                        lineWidth: selectionIndex == nil ? 1 : 2
+                                    )
+                            )
+
+                        Text(String(grid[position.row][position.col]))
+                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .foregroundStyle(selectionIndex == nil ? Color(red: 0.12, green: 0.22, blue: 0.30) : Color.white)
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        if let selectionIndex {
+                            Text("\(selectionIndex + 1)")
+                                .font(.caption2.weight(.black))
+                                .foregroundStyle(Color(red: 0.09, green: 0.28, blue: 0.33))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(Color.white.opacity(0.94))
+                                )
+                                .padding(7)
+                        }
+                    }
+                    .aspectRatio(1, contentMode: .fit)
+                    .shadow(
+                        color: Color.black.opacity(selectionIndex == nil ? 0.06 : 0.14),
+                        radius: selectionIndex == nil ? 8 : 14,
+                        x: 0,
+                        y: selectionIndex == nil ? 6 : 10
+                    )
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(Color.white.opacity(0.78))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .stroke(Color.white.opacity(0.94), lineWidth: 1)
+                    )
+            )
+        }
     }
 }

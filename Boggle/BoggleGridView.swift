@@ -7,6 +7,7 @@ import SwiftUI
 struct BoggleGridView: View {
     let grid: [[Character]]
     @Binding var selectedLetters: [Position]
+    var isInteractive = true
     var onSelect: (Position) -> Void
     @State private var dragOrigin: Position?
     @State private var lastDraggedPosition: Position?
@@ -67,6 +68,7 @@ struct BoggleGridView: View {
                         )
                         .contentShape(Rectangle())
                         .onTapGesture {
+                            guard isInteractive else { return }
                             onSelect(position)
                         }
                     }
@@ -99,6 +101,7 @@ struct BoggleGridView: View {
     }
 
     private func handleDragChange(_ value: DragGesture.Value, layout: BoardLayout) {
+        guard isInteractive else { return }
         guard let startPosition = layout.position(at: value.startLocation) else { return }
 
         if dragOrigin == nil {

@@ -36,6 +36,30 @@ final class BoggleTests: XCTestCase {
         )
     }
 
+    func testBoardWordFinderReturnsPlayableWordsAndPaths() {
+        let grid = [
+            Array("CONI"),
+            Array("ABIC"),
+            Array("FIXS"),
+            Array("DELT")
+        ]
+        let words = BoardWordFinder.findWords(
+            in: grid,
+            dictionary: ["fix", "conic", "coin", "tone"],
+            minimumLength: 3
+        )
+
+        XCTAssertEqual(Set(words.map(\.word)), Set(["fix", "conic", "coin"]))
+        XCTAssertEqual(
+            words.first(where: { $0.word == "fix" })?.path,
+            [
+                Position(row: 2, col: 0),
+                Position(row: 2, col: 1),
+                Position(row: 2, col: 2)
+            ]
+        )
+    }
+
     @MainActor
     func testApplyingSettingsStartsConfiguredRound() {
         let vm = GameViewModel()
