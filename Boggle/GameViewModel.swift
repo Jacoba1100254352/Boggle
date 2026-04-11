@@ -64,7 +64,7 @@ struct UserMessage: Identifiable, Equatable {
     init(dictionary: Set<String>? = nil) {
         rebuildRules()      // Set up rule engine based on saved options
         if let dictionary {
-            self.dictionary = Set<String>(dictionary.map { $0.lowercased() })
+            self.dictionary = Self.normalizeDictionaryEntries(dictionary)
         } else {
             loadDictionary()    // Load valid word list from file
         }
@@ -137,9 +137,22 @@ struct UserMessage: Identifiable, Equatable {
     // Loads a list of valid words from a dictionary file in the app bundle.
     private func loadDictionary() {
         guard let path = Bundle.main.path(forResource: "dictionary", ofType: "txt"),
-              let content = try? String(contentsOfFile: path) else { return }
-        // Store all words (lowercased) in a set for fast lookup
-        dictionary = Set(content.split(separator: "\n").map { $0.lowercased() })
+              let content = try? String(contentsOfFile: path, encoding: .utf8) else { return }
+        dictionary = Self.parseDictionary(from: content)
+    }
+
+    nonisolated static func parseDictionary(from content: String) -> Set<String> {
+        normalizeDictionaryEntries(
+            content.split(whereSeparator: \.isNewline).map(String.init)
+        )
+    }
+
+    private nonisolated static func normalizeDictionaryEntries<S: Sequence>(_ entries: S) -> Set<String> where S.Element == String {
+        Set(
+            entries
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+                .filter { !$0.isEmpty }
+        )
     }
 
     // Creates a square grid of random uppercase letters for the current board size.

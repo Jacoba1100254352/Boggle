@@ -74,6 +74,14 @@ final class BoggleTests: XCTestCase {
         XCTAssertNil(vm.userMessage)
     }
 
+    func testDictionaryParserNormalizesCRLFEntries() {
+        let dictionary = GameViewModel.parseDictionary(from: "fix\r\nconic\r\n")
+
+        XCTAssertTrue(dictionary.contains("fix"))
+        XCTAssertTrue(dictionary.contains("conic"))
+        XCTAssertFalse(dictionary.contains("fix\r"))
+    }
+
     @MainActor
     func testShortWordsScoreZeroWhenMinimumLengthRuleIsDisabled() {
         let vm = GameViewModel(dictionary: ["an"])
