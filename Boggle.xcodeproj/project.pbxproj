@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F40A59A72E1FB30200A8D0F1 /* dictionary.txt in Resources */ = {isa = PBXBuildFile; fileRef = F40A59A62E1FB30200A8D0F1 /* dictionary.txt */; };
 		F42588722E11BA9100333C40 /* Rules.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42588712E11BA9100333C40 /* Rules.swift */; };
 		F42588742E11BB0100333C40 /* RuleSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42588732E11BB0100333C40 /* RuleSettingsView.swift */; };
 		F42588782E11D29F00333C40 /* BoggleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42588772E11D29F00333C40 /* BoggleApp.swift */; };
@@ -41,6 +42,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F40A59A62E1FB30200A8D0F1 /* dictionary.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = dictionary.txt; sourceTree = "<group>"; };
 		F42588712E11BA9100333C40 /* Rules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rules.swift; sourceTree = "<group>"; };
 		F42588732E11BB0100333C40 /* RuleSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleSettingsView.swift; sourceTree = "<group>"; };
 		F42588772E11D29F00333C40 /* BoggleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoggleApp.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 				F44913C42AF59537001BBA2D /* Main.storyboard */,
 				F44913C72AF59540001BBA2D /* Assets.xcassets */,
 				F44913C92AF59540001BBA2D /* LaunchScreen.storyboard */,
+				F40A59A62E1FB30200A8D0F1 /* dictionary.txt */,
 				F42588712E11BA9100333C40 /* Rules.swift */,
 				F42588732E11BB0100333C40 /* RuleSettingsView.swift */,
 				F42588772E11D29F00333C40 /* BoggleApp.swift */,
@@ -244,6 +247,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F40A59A72E1FB30200A8D0F1 /* dictionary.txt in Resources */,
 				F44913C62AF59537001BBA2D /* Main.storyboard in Resources */,
 				F44913C82AF59540001BBA2D /* Assets.xcassets in Resources */,
 				F44913CB2AF59540001BBA2D /* LaunchScreen.storyboard in Resources */,
