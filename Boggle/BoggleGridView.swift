@@ -57,8 +57,7 @@ struct BoggleGridView: View {
                             BoggleTile(
                                 letter: String(grid[position.row][position.col]),
                                 tileSize: tileSize,
-                                selectionIndex: selectionIndex,
-                                angle: tileAngle(forRow: position.row, col: position.col)
+                                selectionIndex: selectionIndex
                             )
                         }
                         .buttonStyle(.plain)
@@ -80,16 +79,12 @@ struct BoggleGridView: View {
         }
     }
 
-    private func tileAngle(forRow row: Int, col: Int) -> Double {
-        Double(((row * 3) + (col * 5)) % 5 - 2)
-    }
 }
 
 private struct BoggleTile: View {
     let letter: String
     let tileSize: CGFloat
     let selectionIndex: Int?
-    let angle: Double
 
     private var isSelected: Bool {
         selectionIndex != nil
@@ -123,18 +118,9 @@ private struct BoggleTile: View {
                         )
                 )
 
-            VStack(spacing: 6) {
-                Spacer(minLength: 0)
-
-                Text(letter)
-                    .font(.system(size: tileSize * 0.44, weight: .black, design: .rounded))
-                    .foregroundStyle(isSelected ? Color.white : Color(red: 0.12, green: 0.22, blue: 0.30))
-
-                Capsule(style: .continuous)
-                    .fill((isSelected ? Color.white : Color(red: 0.19, green: 0.40, blue: 0.47)).opacity(isSelected ? 0.28 : 0.10))
-                    .frame(width: tileSize * 0.34, height: 5)
-                    .padding(.bottom, tileSize * 0.10)
-            }
+            Text(letter)
+                .font(.system(size: tileSize * 0.42, weight: .black, design: .rounded))
+                .foregroundStyle(isSelected ? Color.white : Color(red: 0.12, green: 0.22, blue: 0.30))
 
             if let selectionIndex {
                 Text("\(selectionIndex + 1)")
@@ -150,7 +136,6 @@ private struct BoggleTile: View {
             }
         }
         .frame(width: tileSize, height: tileSize)
-        .rotationEffect(.degrees(angle))
         .shadow(
             color: Color.black.opacity(isSelected ? 0.20 : 0.08),
             radius: isSelected ? 16 : 10,

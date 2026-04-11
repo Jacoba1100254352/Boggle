@@ -97,21 +97,21 @@ struct ContentView: View {
                 Image("BoggleMark")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 28, height: 28)
-                    .padding(5)
+                    .frame(width: 24, height: 24)
+                    .padding(6)
                     .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
                             .fill(Color.white.opacity(0.62))
                     )
 
                 Text("Boggle")
-                    .font(.title2.weight(.black))
+                    .font(.title3.weight(.black))
                     .foregroundStyle(Color(red: 0.09, green: 0.20, blue: 0.28))
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
             }
         }
-        .frame(height: 48)
+        .frame(height: 44)
     }
 
     private var statusRail: some View {
@@ -123,8 +123,8 @@ struct ContentView: View {
     }
 
     private var boardPanel: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .center) {
                     Text("Board")
                         .font(.headline)
@@ -144,10 +144,9 @@ struct ContentView: View {
                     FootnoteBadge(title: "Found", value: "\(vm.foundWords.count)")
                 }
 
-                Text("Trace neighboring letters, then submit.")
+                Text("Trace letters, then submit.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
 
             BoggleGridView(grid: vm.grid, selectedLetters: $selected, onSelect: select)
@@ -166,21 +165,15 @@ struct ContentView: View {
     private var composerBar: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Current")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Text(vm.currentWord.isEmpty ? "Start tracing" : vm.currentWord.uppercased())
-                        .font(.footnote.weight(.bold))
-                        .foregroundStyle(vm.currentWord.isEmpty ? Color.secondary : Color.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                }
+                Text(vm.currentWord.isEmpty ? "Start tracing" : vm.currentWord.uppercased())
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(vm.currentWord.isEmpty ? Color.secondary : Color.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
                 Spacer()
 
-                Text(vm.currentWord.isEmpty ? minimumRequirementDescription : "+\(currentWordPreviewScore) pts")
+                Text(vm.currentWord.isEmpty ? minimumRequirementBadgeText : "+\(currentWordPreviewScore) pts")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Color(red: 0.15, green: 0.40, blue: 0.44))
                     .padding(.horizontal, 10)
@@ -201,8 +194,8 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, 18)
-        .padding(.top, 12)
-        .padding(.bottom, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
         .background(
             Rectangle()
                 .fill(.ultraThinMaterial)
@@ -284,6 +277,14 @@ struct ContentView: View {
         return "No minimum length."
     }
 
+    private var minimumRequirementBadgeText: String {
+        if vm.currentSettings.options.contains(.minLength) {
+            return "Min \(vm.currentSettings.minimumWordLength)+"
+        }
+
+        return "No minimum"
+    }
+
     private var currentWordPreviewScore: Int {
         switch vm.currentWord.count {
         case 0...2:
@@ -337,12 +338,12 @@ private struct TopBarButton: View {
             Image(systemName: systemName)
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(Color(red: 0.14, green: 0.39, blue: 0.45))
-                .frame(width: 46, height: 46)
+                .frame(width: 42, height: 42)
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(Color.white.opacity(0.62))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .stroke(Color.white.opacity(0.7), lineWidth: 1)
                         )
                 )
@@ -363,12 +364,12 @@ private struct StatusChip: View {
                 .foregroundStyle(.secondary)
 
             Text(value)
-                .font(.headline.weight(.bold))
+                .font(.title3.weight(.bold))
                 .monospacedDigit()
                 .foregroundStyle(Color.primary)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
