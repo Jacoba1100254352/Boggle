@@ -28,9 +28,8 @@ struct ContentView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 104)
             }
-            .scrollDismissesKeyboard(.interactively)
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarHidden(true)
         .safeAreaInset(edge: .bottom) {
             composerBar
         }
@@ -39,14 +38,13 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingSettings) {
             RuleSettingsView(vm: vm)
-                .presentationDragIndicator(.visible)
         }
         .onAppear {
             if vm.grid.isEmpty {
                 vm.startGame()
             }
         }
-        .onChange(of: vm.grid) {
+        .onChange(of: vm.grid) { _ in
             selected.removeAll()
             vm.currentWord = ""
         }

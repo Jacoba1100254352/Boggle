@@ -91,7 +91,7 @@ private struct BoggleTile: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(
                     LinearGradient(
@@ -121,7 +121,8 @@ private struct BoggleTile: View {
             Text(letter)
                 .font(.system(size: tileSize * 0.42, weight: .black, design: .rounded))
                 .foregroundStyle(isSelected ? Color.white : Color(red: 0.12, green: 0.22, blue: 0.30))
-
+        }
+        .overlay(alignment: .topTrailing) {
             if let selectionIndex {
                 Text("\(selectionIndex + 1)")
                     .font(.caption2.weight(.black))

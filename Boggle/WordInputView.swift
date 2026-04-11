@@ -48,18 +48,11 @@ struct WordInputView: View {
             )
 
             Button(action: onSubmit) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        Text("Submit")
-                            .font(.headline.weight(.semibold))
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.headline)
-                    }
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-
+                HStack(spacing: 6) {
+                    Text("Go")
+                        .font(.subheadline.weight(.bold))
                     Image(systemName: "arrow.up.circle.fill")
-                        .font(.title3.weight(.bold))
+                        .font(.subheadline.weight(.bold))
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)

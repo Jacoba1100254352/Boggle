@@ -42,19 +42,38 @@ struct UserMessage: Identifiable, Equatable {
     // Handles rule enforcement for word validity.
     private var ruleEngine: RuleEngine!
 
-    // MARK: - Persisted rule bit‑mask (stores the user's rule preferences)
+    // MARK: - Persisted rule bit-mask (stores the user's rule preferences)
     // @AppStorage persists the value using UserDefaults, so rule options are saved between app launches.
     // 'private' so only this class changes the value directly.
-    @AppStorage("ruleOptions") private var optionsRaw = RuleOptions.all.rawValue
+    @AppStorage("ruleOptions") private var optionsRaw = RuleOptions.standard.rawValue
+    @AppStorage("minimumWordLength") private var minimumWordLengthRaw = GameSettings.classic.minimumWordLength
+    @AppStorage("boardSize") private var boardSizeRaw = GameSettings.classic.boardSize.rawValue
+    @AppStorage("roundDuration") private var roundDurationRaw = GameSettings.classic.roundDuration.rawValue
 
-    /// Exposes the current rule options for use in the settings view (read-only).
-    var currentOptions: RuleOptions { RuleOptions(rawValue: optionsRaw) }
+    /// Exposes the current settings for use in the UI.
+    var currentSettings: GameSettings {
+        GameSettings(
+            options: RuleOptions(rawValue: optionsRaw),
+            minimumWordLength: max(3, minimumWordLengthRaw),
+            boardSize: BoardSize(rawValue: boardSizeRaw) ?? .four,
+            roundDuration: RoundDuration(rawValue: roundDurationRaw) ?? .threeMinutes
+        )
+    }
 
     // MARK: - Init (setup)
-    init() {
+    init(dictionary: Set<String>? = nil) {
         rebuildRules()      // Set up rule engine based on saved options
-        loadDictionary()    // Load valid word list from file
+        if let dictionary {
+            self.dictionary = Set<String>(dictionary.map { $0.lowercased() })
+        } else {
+            loadDictionary()    // Load valid word list from file
+        }
         highScore = UserDefaults.standard.integer(forKey: "HighScore") // Load best score
+        timeRemaining = currentSettings.roundDuration.seconds
+    }
+
+    deinit {
+        timer?.cancel()
     }
 
     // MARK: - Game control (main game logic)
@@ -62,7 +81,12 @@ struct UserMessage: Identifiable, Equatable {
     func startGame() { generateGrid(); resetGame(); startTimer() }
 
     // Resets the round state: clears found words, resets score, resets time, empties current word.
-    func resetGame() { foundWords.removeAll(); score = 0; currentWord = ""; timeRemaining = 180 }
+    func resetGame() {
+        foundWords.removeAll()
+        score = 0
+        currentWord = ""
+        timeRemaining = currentSettings.roundDuration.seconds
+    }
 
     // Called when the user tries to submit a word.
     // Validates the word, checks rules and dictionary, updates score and state as needed.
@@ -85,16 +109,25 @@ struct UserMessage: Identifiable, Equatable {
         currentWord = "" // Clear the current word for next turn
     }
 
-    // MARK: - Rule toggling (settings/rules UI interaction)
-    // Toggles a specific rule on/off using bitwise XOR.
-    func toggle(_ flag: RuleOptions) { optionsRaw ^= flag.rawValue; rebuildRules() }
+    // MARK: - Settings updates (settings/rules UI interaction)
+    func applySettings(_ settings: GameSettings) {
+        optionsRaw = settings.options.rawValue
+        minimumWordLengthRaw = max(3, settings.minimumWordLength)
+        boardSizeRaw = settings.boardSize.rawValue
+        roundDurationRaw = settings.roundDuration.rawValue
+        rebuildRules()
+        startGame()
+    }
 
     // Rebuild the rule engine using the latest toggles/options.
     private func rebuildRules() {
-        let opts = RuleOptions(rawValue: optionsRaw)
+        let settings = currentSettings
+        let opts = settings.options
         var r: [GameRule] = []
         // Optionally require minimum length
-        if opts.contains(.minLength)   { r.append(MinLengthRule(minLen: 3)) }
+        if opts.contains(.minLength) {
+            r.append(MinLengthRule(minLen: settings.minimumWordLength))
+        }
         // Optionally require unique words
         if opts.contains(.uniqueWords) { r.append(UniqueWordRule()) }
         ruleEngine = RuleEngine(r) // Create new engine with these rules
@@ -109,15 +142,29 @@ struct UserMessage: Identifiable, Equatable {
         dictionary = Set(content.split(separator: "\n").map { $0.lowercased() })
     }
 
-    // Creates a new 4x4 grid of random uppercase letters for the game board.
+    // Creates a square grid of random uppercase letters for the current board size.
     private func generateGrid() {
         let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        grid = (0..<4).map { _ in (0..<4).map { _ in letters.randomElement()! } }
+        let size = currentSettings.boardSize.dimension
+        grid = (0..<size).map { _ in (0..<size).map { _ in letters.randomElement()! } }
     }
 
     // Calculates how many points a word earns (longer words score more).
     private func calculateScore(for w: String) -> Int {
-        switch w.count { case 3...4: 1; case 5: 2; case 6: 3; case 7: 5; default: 11 }
+        switch w.count {
+        case 0...2:
+            return 0
+        case 3...4:
+            return 1
+        case 5:
+            return 2
+        case 6:
+            return 3
+        case 7:
+            return 5
+        default:
+            return 11
+        }
     }
 
     // MARK: - Timer logic

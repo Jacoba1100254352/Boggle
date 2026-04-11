@@ -56,7 +56,7 @@ struct RuleSettingsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             ZStack {
                 LinearGradient(
                     colors: [
@@ -101,6 +101,7 @@ struct RuleSettingsView: View {
                 footer
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     private var heroCard: some View {
