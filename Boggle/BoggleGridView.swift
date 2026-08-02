@@ -213,18 +213,14 @@ private struct BoggleTile: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .topLeading) {
             if let selectionIndex {
                 Text("\(selectionIndex + 1)")
-                    .font(.caption2.weight(.black))
-                    .foregroundStyle(Color(red: 0.09, green: 0.28, blue: 0.33))
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.92))
-                    )
-                    .padding(8)
+                    .font(.system(size: max(10, tileSize * 0.13 + 2), weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(Color.white)
+                    .padding(.top, 7)
+                    .padding(.leading, 8)
             }
         }
         .frame(width: tileSize, height: tileSize)
