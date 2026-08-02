@@ -3,6 +3,7 @@
 // =============================================================
 
 import Combine
+import Foundation
 import SwiftUI
 
 // UserMessage: A simple structure to hold messages for the user (e.g., errors or alerts).
@@ -20,7 +21,7 @@ struct UserMessage: Identifiable, Equatable {
 @MainActor final class GameViewModel: ObservableObject {
     // MARK: - UI-bound state (Published so SwiftUI updates automatically)
     // The current letter grid for the game.
-    @Published var grid: [[Character]] = []
+    @Published var grid: [[String]] = []
     // The word the user is currently building/selecting.
     @Published var currentWord = ""
     // A running list of words the user has found so far.
@@ -40,6 +41,7 @@ struct UserMessage: Identifiable, Equatable {
     // MARK: - Private helpers (not exposed to the view)
     // Used to manage the repeating timer for countdown.
     private var timer: AnyCancellable?
+    private var roundEndsAt: Date?
     private var solutionTask: Task<Void, Never>?
     private var solutionGeneration = UUID()
     // The set of valid words loaded from a dictionary file.
@@ -84,18 +86,24 @@ struct UserMessage: Identifiable, Equatable {
 
     // MARK: - Game control (main game logic)
     // Starts a new game: creates a new grid, resets word/score/timer, and starts the countdown.
-    func startGame() {
-        generateGrid()
+    func startGame(now: Date = Date()) {
         resetGame()
+        generateGrid()
         prepareBoardReview()
-        startTimer()
+        startTimer(now: now)
     }
 
     // Resets the round state: clears found words, resets score, resets time, empties current word.
-    func resetGame() {
+    private func resetGame() {
+        timer?.cancel()
+        timer = nil
+        roundEndsAt = nil
+        solutionTask?.cancel()
+        solutionGeneration = UUID()
         foundWords.removeAll()
         score = 0
         currentWord = ""
+        userMessage = nil
         timeRemaining = currentSettings.roundDuration.seconds
         availableWords.removeAll()
         isSearchingAvailableWords = false
@@ -103,14 +111,32 @@ struct UserMessage: Identifiable, Equatable {
 
     // Called when the user tries to submit a word.
     // Validates the word, checks rules and dictionary, updates score and state as needed.
-    func submitWord(selectedLetters: [Position]) {
-        let word = currentWord.lowercased() // Always compare in lowercase
-        guard !word.isEmpty else { return } // Ignore empty submissions
+    @discardableResult
+    func submitWord(selectedLetters: [Position]) -> Bool {
+        let word = currentWord.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !word.isEmpty else { return false }
+        guard !isRoundOver else {
+            userMessage = UserMessage(message: "The round is over. Start a new round to keep playing.")
+            return false
+        }
+
         let ctx = GameContext(grid: grid, previousWords: Set(foundWords))
         switch ruleEngine.evaluate(word: word, path: selectedLetters, in: ctx) {
         case .success(let bonus):
             // If custom rules pass, check if it's a real word in our dictionary
-            guard dictionary.contains(word) else { userMessage = UserMessage(message: "Not in dictionary"); return }
+            guard dictionary.contains(word) else {
+                userMessage = UserMessage(message: "Not in the dictionary.")
+                return false
+            }
+
+            let isPlayable = selectedLetters.isEmpty
+                ? BoardWordFinder.path(for: word, in: grid) != nil
+                : BoardWordFinder.path(selectedLetters, spells: word, in: grid)
+            guard isPlayable else {
+                userMessage = UserMessage(message: "That word can’t be made from connected tiles on this board.")
+                return false
+            }
+
             foundWords.append(word) // Save the new word
             score += bonus + Self.score(for: word) // Add points for this word
             // Update high score if needed
@@ -118,8 +144,16 @@ struct UserMessage: Identifiable, Equatable {
         case .failure(let why):
             // If rules failed, show the reason to the user
             userMessage = UserMessage(message: why)
+            return false
         }
-        currentWord = "" // Clear the current word for next turn
+
+        currentWord = ""
+        userMessage = nil
+        return true
+    }
+
+    func clearUserMessage() {
+        userMessage = nil
     }
 
     // MARK: - Settings updates (settings/rules UI interaction)
@@ -168,11 +202,9 @@ struct UserMessage: Identifiable, Equatable {
         )
     }
 
-    // Creates a square grid of random uppercase letters for the current board size.
+    // Creates a square grid from a shuffled set of letter-balanced dice.
     private func generateGrid() {
-        let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        let size = currentSettings.boardSize.dimension
-        grid = (0..<size).map { _ in (0..<size).map { _ in letters.randomElement()! } }
+        grid = BoardGenerator.generate(for: currentSettings.boardSize)
     }
 
     // Calculates how many points a word earns (longer words score more).
@@ -195,32 +227,41 @@ struct UserMessage: Identifiable, Equatable {
 
     // MARK: - Timer logic
     // Starts (or restarts) the countdown timer for the game.
-    private func startTimer() {
+    private func startTimer(now: Date) {
         timer?.cancel() // Stop any existing timer
+        roundEndsAt = now.addingTimeInterval(TimeInterval(timeRemaining))
         // Create a new timer that fires every second and calls 'tick()'
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
-            .sink { [weak self] _ in self?.tick() }
+            .sink { [weak self] tickDate in self?.tick(at: tickDate) }
     }
 
-    // Called every second by the timer.
-    // Decreases remaining time, and stops the timer if time runs out.
-    private func tick() {
-        guard timeRemaining > 0 else {
-            timer?.cancel()
-            return
+    /// Reconciles the countdown against wall-clock time after the app returns
+    /// from the background, where timer publisher events may have been paused.
+    func refreshTimer(at now: Date = Date()) {
+        tick(at: now)
+    }
+
+    private func tick(at now: Date) {
+        guard let roundEndsAt else { return }
+
+        let remaining = max(0, Int(ceil(roundEndsAt.timeIntervalSince(now))))
+        if remaining != timeRemaining {
+            timeRemaining = remaining
         }
 
-        timeRemaining -= 1
-
-        if timeRemaining == 0 {
+        guard remaining > 0 else {
             currentWord = ""
+            userMessage = nil
             timer?.cancel()
+            timer = nil
+            self.roundEndsAt = nil
+            return
         }
     }
 
     var isRoundOver: Bool {
-        timeRemaining == 0
+        timeRemaining <= 0
     }
 
     private func prepareBoardReview() {
@@ -234,15 +275,18 @@ struct UserMessage: Identifiable, Equatable {
         let generation = UUID()
         solutionGeneration = generation
 
-        solutionTask = Task.detached(priority: .utility) { [weak self, grid, dictionary] in
-            let matches = BoardWordFinder.findWords(in: grid, dictionary: dictionary, minimumLength: minimumLength)
+        solutionTask = Task { [weak self, grid, dictionary] in
+            let matches = await Task.detached(priority: .utility) {
+                BoardWordFinder.findWords(
+                    in: grid,
+                    dictionary: dictionary,
+                    minimumLength: minimumLength
+                )
+            }.value
             guard !Task.isCancelled else { return }
-
-            await MainActor.run {
-                guard let self, self.solutionGeneration == generation else { return }
-                self.availableWords = matches
-                self.isSearchingAvailableWords = false
-            }
+            guard let self, self.solutionGeneration == generation else { return }
+            self.availableWords = matches
+            self.isSearchingAvailableWords = false
         }
     }
 }

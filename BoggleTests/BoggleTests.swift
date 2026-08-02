@@ -37,12 +37,7 @@ final class BoggleTests: XCTestCase {
     }
 
     func testBoardWordFinderReturnsPlayableWordsAndPaths() {
-        let grid = [
-            Array("CONI"),
-            Array("ABIC"),
-            Array("FIXS"),
-            Array("DELT")
-        ]
+        let grid = makeGrid(["CONI", "ABIC", "FIXS", "DELT"])
         let words = BoardWordFinder.findWords(
             in: grid,
             dictionary: ["fix", "conic", "coin", "tone"],
@@ -89,9 +84,10 @@ final class BoggleTests: XCTestCase {
         )
 
         vm.applySettings(settings)
+        vm.grid = makeGrid(["ANTA", "BBBB", "CCCC", "DDDD"])
 
         vm.currentWord = "ANT"
-        vm.submitWord(selectedLetters: [])
+        XCTAssertTrue(vm.submitWord(selectedLetters: []))
 
         XCTAssertEqual(vm.foundWords, ["ant"])
         XCTAssertEqual(vm.score, 1)
@@ -117,11 +113,114 @@ final class BoggleTests: XCTestCase {
         )
 
         vm.applySettings(settings)
+        vm.grid = makeGrid(["ANBC", "DEFG", "HIJK", "LMNO"])
         vm.currentWord = "AN"
-        vm.submitWord(selectedLetters: [])
+        XCTAssertTrue(vm.submitWord(selectedLetters: []))
 
         XCTAssertEqual(vm.foundWords, ["an"])
         XCTAssertEqual(vm.score, 0)
         XCTAssertNil(vm.userMessage)
+    }
+
+    @MainActor
+    func testTypedWordMustBePlayableOnTheBoard() {
+        let vm = GameViewModel(dictionary: ["cat", "dog"])
+        vm.applySettings(.classic)
+        vm.grid = makeGrid(["CATA", "BBBB", "EEEE", "FFFF"])
+
+        vm.currentWord = "DOG"
+
+        XCTAssertFalse(vm.submitWord(selectedLetters: []))
+        XCTAssertTrue(vm.foundWords.isEmpty)
+        XCTAssertEqual(
+            vm.userMessage?.message,
+            "That word can’t be made from connected tiles on this board."
+        )
+    }
+
+    @MainActor
+    func testTracedSubmissionMustMatchItsConnectedPath() {
+        let vm = GameViewModel(dictionary: ["cat"])
+        vm.applySettings(.classic)
+        vm.grid = makeGrid(["CATA", "BBBB", "EEEE", "FFFF"])
+        vm.currentWord = "CAT"
+
+        let disconnectedPath = [
+            Position(row: 0, col: 0),
+            Position(row: 0, col: 1),
+            Position(row: 3, col: 3)
+        ]
+
+        XCTAssertFalse(vm.submitWord(selectedLetters: disconnectedPath))
+        XCTAssertTrue(vm.foundWords.isEmpty)
+    }
+
+    func testQuTileConsumesTwoLettersInOneBoardPosition() {
+        let grid = [
+            ["Qu", "E", "E", "N"],
+            ["A", "B", "C", "D"],
+            ["F", "G", "H", "I"],
+            ["J", "K", "L", "M"]
+        ]
+
+        let match = BoardWordFinder.findWords(
+            in: grid,
+            dictionary: ["queen"],
+            minimumLength: 3
+        ).first
+
+        XCTAssertEqual(match?.word, "queen")
+        XCTAssertEqual(match?.path.count, 4)
+        XCTAssertEqual(BoardWordFinder.word(along: match?.path ?? [], in: grid), "queen")
+    }
+
+    func testBoardGeneratorBuildsBalancedBoardDimensionsAndQuTiles() {
+        var generator = SeededRandomNumberGenerator(seed: 42)
+        let classicBoard = BoardGenerator.generate(for: .four, using: &generator)
+        let expandedBoard = BoardGenerator.generate(for: .five, using: &generator)
+
+        XCTAssertEqual(classicBoard.count, 4)
+        XCTAssertTrue(classicBoard.allSatisfy { $0.count == 4 })
+        XCTAssertEqual(expandedBoard.count, 5)
+        XCTAssertTrue(expandedBoard.allSatisfy { $0.count == 5 })
+        XCTAssertTrue(
+            (classicBoard + expandedBoard)
+                .flatMap { $0 }
+                .allSatisfy { $0 == "Qu" || $0.count == 1 }
+        )
+        XCTAssertEqual(BoardGenerator.tileText(for: "Q"), "Qu")
+    }
+
+    @MainActor
+    func testTimerUsesElapsedWallClockTime() {
+        let vm = GameViewModel(dictionary: ["cat"])
+        let start = Date(timeIntervalSinceReferenceDate: 1_000)
+
+        vm.startGame(now: start)
+        vm.refreshTimer(at: start.addingTimeInterval(61.2))
+
+        XCTAssertEqual(vm.timeRemaining, 119)
+
+        vm.refreshTimer(at: start.addingTimeInterval(181))
+
+        XCTAssertTrue(vm.isRoundOver)
+        XCTAssertEqual(vm.timeRemaining, 0)
+    }
+
+    private func makeGrid(_ rows: [String]) -> [[String]] {
+        rows.map { $0.map(String.init) }
+    }
+}
+
+private struct SeededRandomNumberGenerator: RandomNumberGenerator {
+    private var state: UInt64
+
+    init(seed: UInt64) {
+        state = seed
+    }
+
+    mutating func next() -> UInt64 {
+        state = state &* 6_364_136_223_846_793_005 &+ 1
+        return state
     }
 }

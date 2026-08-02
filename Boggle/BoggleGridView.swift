@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct BoggleGridView: View {
-    let grid: [[Character]]
+    let grid: [[String]]
     @Binding var selectedLetters: [Position]
     var isInteractive = true
     var onSelect: (Position) -> Void
@@ -68,6 +68,18 @@ struct BoggleGridView: View {
                         )
                         .contentShape(Rectangle())
                         .onTapGesture {
+                            guard isInteractive else { return }
+                            onSelect(position)
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(grid[position.row][position.col]) tile, row \(position.row + 1), column \(position.col + 1)")
+                        .accessibilityValue(
+                            selectionIndex.map { "Selected, step \($0 + 1)" } ?? "Not selected"
+                        )
+                        .accessibilityHint(isInteractive ? "Double-tap to add or remove this tile." : "The round is over.")
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityIdentifier("boardTile_\(position.row)_\(position.col)")
+                        .accessibilityAction {
                             guard isInteractive else { return }
                             onSelect(position)
                         }
@@ -198,6 +210,8 @@ private struct BoggleTile: View {
             Text(letter)
                 .font(.system(size: tileSize * 0.42, weight: .black, design: .rounded))
                 .foregroundStyle(isSelected ? Color.white : Color(red: 0.12, green: 0.22, blue: 0.30))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .overlay(alignment: .topTrailing) {
             if let selectionIndex {

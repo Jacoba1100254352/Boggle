@@ -467,6 +467,8 @@ private struct ToggleRow: View {
             Toggle("", isOn: $isOn)
                 .labelsHidden()
                 .tint(Color(red: 0.15, green: 0.44, blue: 0.39))
+                .accessibilityLabel(title)
+                .accessibilityHint(subtitle)
         }
         .padding(18)
         .background(
@@ -496,5 +498,7 @@ private struct SummaryChip: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white.opacity(0.74))
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), \(value)")
     }
 }

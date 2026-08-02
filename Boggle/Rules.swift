@@ -113,7 +113,7 @@ struct GameSettings: Equatable {
 // Holds the current grid and all words found so far.
 // =============================================================
 struct GameContext {
-    let grid: [[Character]]
+    let grid: [[String]]
     let previousWords: Set<String>
 }
 

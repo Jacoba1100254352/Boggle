@@ -5,9 +5,11 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var vm = GameViewModel()
     @State private var selected: [Position] = []
     @State private var showingSettings = false
+    @State private var showingRestartConfirmation = false
     @State private var selectedSolution: BoardWordMatch?
 
     private let wordColumns = [
@@ -42,9 +44,6 @@ struct ContentView: View {
                 composerBar
             }
         }
-        .alert(item: $vm.userMessage) { msg in
-            Alert(title: Text(msg.message))
-        }
         .sheet(isPresented: $showingSettings) {
             RuleSettingsView(vm: vm)
         }
@@ -55,19 +54,36 @@ struct ContentView: View {
                 isFound: foundWordSet.contains(match.word)
             )
         }
+        .confirmationDialog(
+            "Start a new round?",
+            isPresented: $showingRestartConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Start New Round", role: .destructive) {
+                vm.startGame()
+            }
+            Button("Keep Playing", role: .cancel) {}
+        } message: {
+            Text("Your current board, words, and score will be replaced.")
+        }
         .onAppear {
             if vm.grid.isEmpty {
                 vm.startGame()
             }
         }
-        .onChange(of: vm.grid) { _ in
+        .onChange(of: vm.grid) {
             selected.removeAll()
             selectedSolution = nil
             vm.currentWord = ""
         }
-        .onChange(of: vm.timeRemaining) { newValue in
+        .onChange(of: vm.timeRemaining) { _, newValue in
             if newValue == 0 {
                 clearSelection()
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                vm.refreshTimer()
             }
         }
     }
@@ -102,15 +118,17 @@ struct ContentView: View {
     private var topBar: some View {
         ZStack {
             HStack {
-                TopBarButton(systemName: "arrow.clockwise") {
-                    vm.startGame()
+                TopBarButton(systemName: "arrow.clockwise", accessibilityLabel: "Start new round") {
+                    requestNewRound()
                 }
+                .accessibilityIdentifier("newRoundButton")
 
                 Spacer()
 
-                TopBarButton(systemName: "slider.horizontal.3") {
+                TopBarButton(systemName: "slider.horizontal.3", accessibilityLabel: "Game settings") {
                     showingSettings = true
                 }
+                .accessibilityIdentifier("gameSettingsButton")
             }
 
             HStack(spacing: 8) {
@@ -123,6 +141,7 @@ struct ContentView: View {
                         RoundedRectangle(cornerRadius: 13, style: .continuous)
                             .fill(Color.white.opacity(0.62))
                     )
+                    .accessibilityHidden(true)
 
                 Text("Boggle")
                     .font(.title3.weight(.black))
@@ -189,6 +208,11 @@ struct ContentView: View {
 
     private var composerBar: some View {
         VStack(spacing: 10) {
+            if let message = vm.userMessage {
+                SubmissionMessageView(message: message.message)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             HStack(spacing: 12) {
                 Text(vm.currentWord.isEmpty ? "Start tracing" : vm.currentWord.uppercased())
                     .font(.footnote.weight(.bold))
@@ -216,12 +240,18 @@ struct ContentView: View {
             WordInputView(
                 word: $vm.currentWord,
                 canClear: !selected.isEmpty || !vm.currentWord.isEmpty,
-                onClear: clearSelection
+                onClear: clearSelection,
+                onWordEdited: {
+                    selected.removeAll()
+                    vm.clearUserMessage()
+                }
             ) {
-                vm.submitWord(selectedLetters: selected)
-                selected.removeAll()
+                if vm.submitWord(selectedLetters: selected) {
+                    selected.removeAll()
+                }
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: vm.userMessage)
         .padding(.horizontal, 18)
         .padding(.top, 10)
         .padding(.bottom, 14)
@@ -274,6 +304,7 @@ struct ContentView: View {
                             )
                         )
                 )
+                .accessibilityIdentifier("roundOverNewRoundButton")
             }
 
             HStack(spacing: 10) {
@@ -321,7 +352,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("No words yet")
                         .font(.headline)
-                    Text("Build one from the board or type it into the composer below to start your streak.")
+                    Text("Trace connected tiles or type a word that can be made on this board.")
                         .font(.subheadline)
                         .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.48))
                 }
@@ -434,14 +465,6 @@ struct ContentView: View {
         return "Open"
     }
 
-    private var minimumRequirementDescription: String {
-        if vm.currentSettings.options.contains(.minLength) {
-            return "Minimum \(vm.currentSettings.minimumWordLength) letters."
-        }
-
-        return "No minimum length."
-    }
-
     private var minimumRequirementBadgeText: String {
         if vm.currentSettings.options.contains(.minLength) {
             return "Min \(vm.currentSettings.minimumWordLength)+"
@@ -471,10 +494,12 @@ struct ContentView: View {
     private func clearSelection() {
         selected.removeAll()
         vm.currentWord = ""
+        vm.clearUserMessage()
     }
 
     private func select(_ pos: Position) {
         guard !vm.isRoundOver else { return }
+        vm.clearUserMessage()
 
         if selected.last == pos {
             selected.removeLast()
@@ -499,7 +524,15 @@ struct ContentView: View {
     }
 
     private func syncCurrentWord() {
-        vm.currentWord = selected.map { String(vm.grid[$0.row][$0.col]) }.joined()
+        vm.currentWord = selected.map { vm.grid[$0.row][$0.col] }.joined()
+    }
+
+    private func requestNewRound() {
+        if vm.isRoundOver || (vm.foundWords.isEmpty && vm.currentWord.isEmpty) {
+            vm.startGame()
+        } else {
+            showingRestartConfirmation = true
+        }
     }
 
     private func formatTime(_ seconds: Int) -> String {
@@ -509,6 +542,7 @@ struct ContentView: View {
 
 private struct TopBarButton: View {
     let systemName: String
+    let accessibilityLabel: String
     let action: () -> Void
 
     var body: some View {
@@ -527,6 +561,32 @@ private struct TopBarButton: View {
                 )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+private struct SubmissionMessageView: View {
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.system(size: 16, weight: .semibold))
+
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .foregroundStyle(Color(red: 0.46, green: 0.20, blue: 0.16))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(red: 0.98, green: 0.91, blue: 0.88))
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Word not accepted. \(message)")
+        .accessibilityIdentifier("submissionMessage")
     }
 }
 
@@ -557,6 +617,8 @@ private struct StatusChip: View {
                         .stroke(tint.opacity(0.22), lineWidth: 1.2)
                 )
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), \(value)")
     }
 }
 
@@ -580,6 +642,8 @@ private struct FootnoteBadge: View {
             Capsule(style: .continuous)
                 .fill(Color.white.opacity(0.84))
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), \(value)")
     }
 }
 
@@ -596,7 +660,7 @@ private struct WordBankCard: View {
 
                 Spacer()
 
-                Text("\(word.count)")
+                Text("\(GameViewModel.score(for: word)) pts")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Color(red: 0.39, green: 0.46, blue: 0.52))
             }
@@ -617,6 +681,8 @@ private struct WordBankCard: View {
                         .stroke(Color.white.opacity(0.92), lineWidth: 1)
                 )
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Word \(rank), \(word), \(word.count) letters, \(GameViewModel.score(for: word)) points")
     }
 }
 
@@ -673,11 +739,15 @@ private struct SolutionWordRow: View {
                         )
                 )
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(match.word), \(match.word.count) letters, \(GameViewModel.score(for: match.word)) points, \(isFound ? "found" : "missed")"
+        )
     }
 }
 
 private struct WordPathPreviewSheet: View {
-    let grid: [[Character]]
+    let grid: [[String]]
     let match: BoardWordMatch
     let isFound: Bool
     @Environment(\.dismiss) private var dismiss
@@ -748,7 +818,7 @@ private struct WordPathPreviewSheet: View {
 }
 
 private struct WordPathBoardPreview: View {
-    let grid: [[Character]]
+    let grid: [[String]]
     let path: [Position]
 
     private var columns: [GridItem] {
@@ -794,7 +864,7 @@ private struct WordPathBoardPreview: View {
                                     )
                             )
 
-                        Text(String(grid[position.row][position.col]))
+                        Text(grid[position.row][position.col])
                             .font(.system(size: 24, weight: .black, design: .rounded))
                             .foregroundStyle(selectionIndex == nil ? Color(red: 0.12, green: 0.22, blue: 0.30) : Color.white)
                     }
